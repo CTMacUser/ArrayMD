@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <stdexcept>
 #include <type_traits>
 
 
@@ -69,6 +70,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
 	t1.data = static_cast<T>( 6 );
 	BOOST_CHECK_EQUAL( t2.data, (T)6 );
 
+	// Check "at"
+	t1.at() = static_cast<T>( 100 );
+	BOOST_CHECK_EQUAL( t2.at(), (T)100 );
+	BOOST_CHECK_NO_THROW( t1.at() );
+	BOOST_CHECK_NO_THROW( t2.at() );
+
 	// Check with array-type as element type
 	typedef array_md<T[2]>  sample2_type;
 
@@ -82,9 +89,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
 	t3.data[ 0 ] = T{};
 	BOOST_CHECK_EQUAL( T(), t4()[0] );
 	BOOST_CHECK_EQUAL( (T)15, t4.data[1] );
+
+	t3.at()[ 0 ] = !T{};
+	BOOST_CHECK_EQUAL( (T)1, t4.at()[0] );
+	BOOST_CHECK_NO_THROW( t3.at()[1] );
+	BOOST_CHECK_NO_THROW( t4.at()[1] );
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE( test_basics_static, T, test_types )
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_nonsingular_static, T, test_types )
 {
     using boost::container::array_md;
     using std::is_same;
@@ -124,10 +136,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_basics_static, T, test_types )
      sizeof( T )) );
 }
 
-BOOST_AUTO_TEST_CASE( test_basics_dynamic )
+BOOST_AUTO_TEST_CASE( test_nonsingular_dynamic )
 {
     using boost::container::array_md;
     using std::strcmp;
+    using std::out_of_range;
 
     // Bracket-based indexing
     typedef array_md<int, 2>  sample_type;
@@ -196,13 +209,66 @@ BOOST_AUTO_TEST_CASE( test_basics_dynamic )
     t3( 1, 1 )[ 0 ] = 'C';
     BOOST_CHECK( strcmp(t4( 1, 1 ), "Catch") == 0 );
 
+    // Try out "at"
+    BOOST_CHECK_EQUAL( t1.at()[0], 3 );
+    BOOST_CHECK_EQUAL( 14, t1.at()[1] );
+    t1.at()[ 0 ] = 5;
+    t1.at()[ 1 ]++;
+    BOOST_CHECK_EQUAL( 5, t2.at()[0] );
+    BOOST_CHECK_EQUAL( t2.at()[1], 15 );
+
+    BOOST_CHECK_EQUAL( t1.at(0), 5 );
+    BOOST_CHECK_EQUAL( 15, t1.at(1) );
+    t1.at( 0 ) = 9;
+    t1.at( 1 )++;
+    BOOST_CHECK_EQUAL( 9, t2.at(0) );
+    BOOST_CHECK_EQUAL( t2.at(1), 16 );
+
+    BOOST_CHECK_NO_THROW( t1.at() );
+    BOOST_CHECK_NO_THROW( t2.at() );
+    BOOST_CHECK_THROW( t1.at(2), out_of_range );
+    BOOST_CHECK_THROW( t2.at(7), out_of_range );
+    BOOST_CHECK_THROW( t1.at(-8), out_of_range );
+
+    BOOST_CHECK( strcmp(t3.at()[ 0 ][ 1 ], "World") == 0 );
+    BOOST_CHECK( strcmp(t3.at( 0 )[ 1 ], "World") == 0 );
+    BOOST_CHECK( strcmp(t3.at( 0, 1 ), "World") == 0 );
+
+    BOOST_CHECK( strcmp("Video", t4.at()[ 1 ][ 0 ]) == 0 );
+    BOOST_CHECK( strcmp("Video", t4.at( 1 )[ 0 ]) == 0 );
+    BOOST_CHECK( strcmp("Video", t4.at( 1, 0 )) == 0 );
+
+    BOOST_CHECK_EQUAL( t3.at()[0][0][1], 'e' );
+    BOOST_CHECK_EQUAL( t3.at(0)[0][1], 'e' );
+    BOOST_CHECK_EQUAL( t3.at(0, 0)[1], 'e' );
+
+    BOOST_CHECK_EQUAL( t4.at()[1][1][2], 't' );
+    BOOST_CHECK_EQUAL( t4.at(1)[1][2], 't' );
+    BOOST_CHECK_EQUAL( t4.at(1, 1)[2], 't' );
+
+    t3.at()[ 1 ][ 1 ][ 0 ] = 'L';
+    BOOST_CHECK( strcmp(t4.at()[ 1 ][ 1 ], "Latch") == 0 );
+    t3.at( 1 )[ 1 ][ 1 ] = 'u';
+    BOOST_CHECK( strcmp(t4.at( 1 )[ 1 ], "Lutch") == 0 );
+    t3.at( 1, 1 )[ 2 ] = 'n';
+    BOOST_CHECK( strcmp(t4.at( 1, 1 ), "Lunch") == 0 );
+
+    BOOST_CHECK_NO_THROW( t3.at() );
+    BOOST_CHECK_NO_THROW( t4.at() );
+    BOOST_CHECK_THROW( t3.at(2), out_of_range );
+    BOOST_CHECK_THROW( t4.at(-6), out_of_range );
+    BOOST_CHECK_THROW( t3.at(1, -9L), out_of_range );
+    BOOST_CHECK_THROW( t4.at(0, 0xAAu), out_of_range );
+
 #if 0
     // The implementation for the recursive-case class template can technically
-    // do these, but it's blocked since the version from the base-case class
+    // do these, but it's blocked since the versions from the base-case class
     // template can't do it.
     BOOST_CHECK_EQUAL( t3(0, 0, 1), 'e' );
-    BOOST_CHECK_EQUAL( t4(1, 1, 2), 't' );
-    t3( 1, 1, 0 ) = 'H';  // !strcmp( t4(1, 1), "Hatch" )
+    BOOST_CHECK_EQUAL( t4(1, 1, 2), 'n' );
+    t3( 1, 1, 0 ) = 'H';     // !strcmp( t4(1, 1), "Hunch" )
+    t3.at( 1, 1, 0 ) = 'M';  // !strcmp( t4.at(1, 1), "Munch" )
+    BOOST_CHECK_EQUAL( t4.at(1, 1, 4), 'h' );
 #endif
 }
 

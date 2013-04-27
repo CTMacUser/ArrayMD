@@ -29,6 +29,7 @@
 #define BOOST_CONTAINER_ARRAY_MD_HPP
 
 #include <cstddef>
+#include <stdexcept>
 
 #include "boost/type_traits/indexing.hpp"
 #include "boost/utility/slice.hpp"
@@ -112,6 +113,23 @@ public:
 	constexpr
 	auto  operator ()() const noexcept -> data_type const &  { return data; }
 
+	/** \brief  Whole-object access to the element data, bounds-checked.
+
+	Works like #operator()(), except for added checking for the indices to be
+	within their bounds.  But since this version doesn't take indices, there
+	isn't any actual checking.
+
+		\see  #operator()()
+
+		\throws  Nothing.
+
+		\returns  A reference to the sole element.
+	 */
+	auto  at()       noexcept -> data_type &        { return data; }
+	//! \overload
+	constexpr
+	auto  at() const noexcept -> data_type const &  { return data; }
+
 	//! The element, public to support aggregate initialization.
 	data_type  data;
 };
@@ -177,8 +195,8 @@ public:
 
 		\param i  The indices for the selected element or slice.  May be empty.
 
-		\throws  Any exceptions from converting an index to a built-in numeric
-		         type.  Otherwise, nothing.
+		\throws  Whatever  from converting an index to a built-in integer or
+		         enumeration type.  Otherwise, nothing.
 
 		\returns  A reference to the requested element (array).
 	 */
@@ -192,7 +210,8 @@ public:
 	}
 	//! \overload
 	template < typename ...Indices >
-	constexpr  auto  operator ()( Indices &&...i ) const
+	constexpr
+	auto  operator ()( Indices &&...i ) const
 	  noexcept( boost::indexing_noexcept<data_type const &, Indices...>::value )
 	  -> typename boost::indexing_result<data_type const &, Indices...>::type
 	{
@@ -228,6 +247,44 @@ public:
 	constexpr
 	direct_element_type const &  operator []( size_type i ) const noexcept
 	{ return data[i]; }
+
+	/** \brief  Access to element data, arbitrary depth, bounds-checked.
+
+	Works like #operator()(), except for added checking for the indices to be
+	within their bounds.
+
+		\pre  0 \<= `sizeof...(i)` \<= #dimensionality.
+
+		\param i  The indices for the selected element or slice.  May be empty.
+
+		\see  #operator()()
+
+		\throws  `std::out_of_range`  if an index is out-of-bounds.
+		\throws  Whatever  from converting an index to a built-in integer or
+		         enumeration type.
+
+		\returns  A reference to the requested element (array).
+	 */
+	template < typename ...Indices >
+	auto  at( Indices &&...i )
+	  -> typename boost::indexing_result<data_type &, Indices...>::type
+	{
+		static_assert( sizeof...(i) <= dimensionality, "Too many indices" );
+
+		return boost::checked_slice(std::out_of_range{ "Index out of bounds" },
+		 data, static_cast<Indices &&>( i )...);
+	}
+	//! \overload
+	template < typename ...Indices >
+	constexpr
+	auto  at( Indices &&...i ) const
+	  -> typename boost::indexing_result<const data_type &, Indices...>::type
+	{
+		static_assert( sizeof...(i) <= dimensionality, "Too many indices" );
+
+		return boost::checked_slice(std::out_of_range{ "Index out of bounds" },
+		 data, static_cast<Indices &&>( i )...);
+	}
 
 	//! The element(s), public to support aggregate initialization.
 	data_type  data;
