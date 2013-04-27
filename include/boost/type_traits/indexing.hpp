@@ -34,6 +34,7 @@
 #include <utility>
 
 
+//! Name-space for all Boost (non-macro) items
 namespace boost
 {
 

@@ -37,6 +37,7 @@
 
 namespace boost
 {
+//! Name-space for Boost.Container and other container types
 namespace container
 {
 
