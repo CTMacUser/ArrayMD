@@ -37,63 +37,63 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_static, T, test_types )
 {
     using std::is_same;
 
-	typedef boost::container::array_md<T>  sample_type;
+    typedef boost::container::array_md<T>  sample_type;
 
-	BOOST_REQUIRE( (is_same<T, typename sample_type::value_type>::value) );
-	BOOST_REQUIRE( (is_same<T, typename sample_type::data_type>::value) );
-	BOOST_REQUIRE( (is_same<std::size_t, typename
+    BOOST_REQUIRE( (is_same<T, typename sample_type::value_type>::value) );
+    BOOST_REQUIRE( (is_same<T, typename sample_type::data_type>::value) );
+    BOOST_REQUIRE( (is_same<std::size_t, typename
      sample_type::size_type>::value) );
 
-	BOOST_REQUIRE_EQUAL( sample_type::dimensionality, 0u );
-	BOOST_REQUIRE_EQUAL( sample_type::static_size, 1u );
+    BOOST_REQUIRE_EQUAL( sample_type::dimensionality, 0u );
+    BOOST_REQUIRE_EQUAL( sample_type::static_size, 1u );
 
-	BOOST_REQUIRE( (sizeof( sample_type ) >= sizeof( T )) );
+    BOOST_REQUIRE( (sizeof( sample_type ) >= sizeof( T )) );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
 {
     using boost::container::array_md;
 
-	typedef array_md<T>  sample_type;
+    typedef array_md<T>  sample_type;
 
-	// Check basic access
-	sample_type          t1{ 5 };
-	sample_type const &  t2 = t1;
+    // Check basic access
+    sample_type          t1{ 5 };
+    sample_type const &  t2 = t1;
 
-	BOOST_CHECK_EQUAL( t1(), (T)5 );
-	BOOST_CHECK_EQUAL( (T)5, t2() );
+    BOOST_CHECK_EQUAL( t1(), (T)5 );
+    BOOST_CHECK_EQUAL( (T)5, t2() );
 
-	t1() = static_cast<T>( 10 );
-	BOOST_CHECK_EQUAL( t2(), (T)10 );
+    t1() = static_cast<T>( 10 );
+    BOOST_CHECK_EQUAL( t2(), (T)10 );
 
-	// Check direct access
-	t1.data = static_cast<T>( 6 );
-	BOOST_CHECK_EQUAL( t2.data, (T)6 );
+    // Check direct access
+    t1.data = static_cast<T>( 6 );
+    BOOST_CHECK_EQUAL( t2.data, (T)6 );
 
-	// Check "at"
-	t1.at() = static_cast<T>( 100 );
-	BOOST_CHECK_EQUAL( t2.at(), (T)100 );
-	BOOST_CHECK_NO_THROW( t1.at() );
-	BOOST_CHECK_NO_THROW( t2.at() );
+    // Check "at"
+    t1.at() = static_cast<T>( 100 );
+    BOOST_CHECK_EQUAL( t2.at(), (T)100 );
+    BOOST_CHECK_NO_THROW( t1.at() );
+    BOOST_CHECK_NO_THROW( t2.at() );
 
-	// Check with array-type as element type
-	typedef array_md<T[2]>  sample2_type;
+    // Check with array-type as element type
+    typedef array_md<T[2]>  sample2_type;
 
-	sample2_type          t3{ {7, 0} };
-	sample2_type const &  t4 = t3;
+    sample2_type          t3{ {7, 0} };
+    sample2_type const &  t4 = t3;
 
-	BOOST_CHECK_EQUAL( t3()[0], (T)7 );
-	BOOST_CHECK_EQUAL( t4()[1], (T)0 );
+    BOOST_CHECK_EQUAL( t3()[0], (T)7 );
+    BOOST_CHECK_EQUAL( t4()[1], (T)0 );
 
-	t3()[ 1 ] = static_cast<T>( 15 );
-	t3.data[ 0 ] = T{};
-	BOOST_CHECK_EQUAL( T(), t4()[0] );
-	BOOST_CHECK_EQUAL( (T)15, t4.data[1] );
+    t3()[ 1 ] = static_cast<T>( 15 );
+    t3.data[ 0 ] = T{};
+    BOOST_CHECK_EQUAL( T(), t4()[0] );
+    BOOST_CHECK_EQUAL( (T)15, t4.data[1] );
 
-	t3.at()[ 0 ] = !T{};
-	BOOST_CHECK_EQUAL( (T)1, t4.at()[0] );
-	BOOST_CHECK_NO_THROW( t3.at()[1] );
-	BOOST_CHECK_NO_THROW( t4.at()[1] );
+    t3.at()[ 0 ] = !T{};
+    BOOST_CHECK_EQUAL( (T)1, t4.at()[0] );
+    BOOST_CHECK_NO_THROW( t3.at()[1] );
+    BOOST_CHECK_NO_THROW( t4.at()[1] );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE( test_nonsingular_static, T, test_types )
@@ -102,37 +102,37 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_nonsingular_static, T, test_types )
     using std::is_same;
     using std::size_t;
 
-	typedef array_md<T, 7, 3>  sample_type;
+    typedef array_md<T, 7, 3>  sample_type;
 
-	BOOST_REQUIRE( (is_same<T, typename sample_type::value_type>::value) );
-	BOOST_REQUIRE( !(is_same<T, typename sample_type::data_type>::value) );
-	BOOST_REQUIRE( (is_same<T[3], typename
+    BOOST_REQUIRE( (is_same<T, typename sample_type::value_type>::value) );
+    BOOST_REQUIRE( !(is_same<T, typename sample_type::data_type>::value) );
+    BOOST_REQUIRE( (is_same<T[3], typename
      sample_type::direct_element_type>::value) );
-	BOOST_REQUIRE( (is_same<T[7][3], typename sample_type::data_type>::value) );
-	BOOST_REQUIRE( (is_same<size_t, typename sample_type::size_type>::value) );
+    BOOST_REQUIRE( (is_same<T[7][3], typename sample_type::data_type>::value) );
+    BOOST_REQUIRE( (is_same<size_t, typename sample_type::size_type>::value) );
 
-	BOOST_REQUIRE_EQUAL( sample_type::dimensionality, 2u );
-	BOOST_REQUIRE_EQUAL( sample_type::static_sizes[0], 7u );
-	BOOST_REQUIRE_EQUAL( sample_type::static_sizes[1], 3u );
-	BOOST_REQUIRE_EQUAL( sample_type::static_size, 21u );
+    BOOST_REQUIRE_EQUAL( sample_type::dimensionality, 2u );
+    BOOST_REQUIRE_EQUAL( sample_type::static_sizes[0], 7u );
+    BOOST_REQUIRE_EQUAL( sample_type::static_sizes[1], 3u );
+    BOOST_REQUIRE_EQUAL( sample_type::static_size, 21u );
 
-	BOOST_REQUIRE( (sizeof( sample_type ) >= sample_type::static_size *
+    BOOST_REQUIRE( (sizeof( sample_type ) >= sample_type::static_size *
      sizeof( T )) );
 
-	typedef array_md<T, 5>  sample2_type;
+    typedef array_md<T, 5>  sample2_type;
 
-	BOOST_REQUIRE( (is_same<T, typename sample2_type::value_type>::value) );
-	BOOST_REQUIRE( !(is_same<T, typename sample2_type::data_type>::value) );
-	BOOST_REQUIRE( (is_same<T, typename
+    BOOST_REQUIRE( (is_same<T, typename sample2_type::value_type>::value) );
+    BOOST_REQUIRE( !(is_same<T, typename sample2_type::data_type>::value) );
+    BOOST_REQUIRE( (is_same<T, typename
      sample2_type::direct_element_type>::value) );
-	BOOST_REQUIRE( (is_same<T[5], typename sample2_type::data_type>::value) );
-	BOOST_REQUIRE( (is_same<size_t, typename sample2_type::size_type>::value) );
+    BOOST_REQUIRE( (is_same<T[5], typename sample2_type::data_type>::value) );
+    BOOST_REQUIRE( (is_same<size_t, typename sample2_type::size_type>::value) );
 
-	BOOST_REQUIRE_EQUAL( sample2_type::dimensionality, 1u );
-	BOOST_REQUIRE_EQUAL( sample2_type::static_sizes[0], 5u );
-	BOOST_REQUIRE_EQUAL( sample2_type::static_size, 5u );
+    BOOST_REQUIRE_EQUAL( sample2_type::dimensionality, 1u );
+    BOOST_REQUIRE_EQUAL( sample2_type::static_sizes[0], 5u );
+    BOOST_REQUIRE_EQUAL( sample2_type::static_size, 5u );
 
-	BOOST_REQUIRE( (sizeof( sample2_type ) >= sample2_type::static_size *
+    BOOST_REQUIRE( (sizeof( sample2_type ) >= sample2_type::static_size *
      sizeof( T )) );
 }
 
