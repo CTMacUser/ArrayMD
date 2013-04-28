@@ -70,7 +70,7 @@ range-`for` statement.
                          extents are given, then a single element is stored.
  */
 template < typename ElementType, std::size_t ...Extents >
-class array_md;
+struct array_md;
 
 
 //  Multi-dimensional array class template specialization declarations  ------//
@@ -82,9 +82,9 @@ The base case stores a single (non-array) element.
     \tparam T  The type of the elements.
  */
 template < typename T >
-class array_md<T>
+struct array_md<T>
 {
-public:
+    // Core types
     //! The element type.  Gives access to the template parameter.
     typedef T           value_type;
     //! The type of #data; equal to #value_type in the base case.
@@ -92,11 +92,13 @@ public:
     //! The type for size-based meta-data.
     typedef std::size_t  size_type;
 
+    // Sizing parameters
     //! The number of array extents supplied as dimensions.
     static constexpr  size_type  dimensionality = 0u;
     //! The total number of elements (of #value_type).
     static constexpr  size_type  static_size = 1u;
 
+    // Element access
     /** \brief  Whole-object access to the element data.
 
     Since this version of `array_md` doesn't carry an internal array, only
@@ -109,7 +111,7 @@ public:
 
         \returns  A reference to the sole element.
      */
-    auto  operator ()() noexcept -> data_type &   { return data; }
+    auto  operator ()() noexcept -> data_type &              { return data; }
     //! \overload
     constexpr
     auto  operator ()() const noexcept -> data_type const &  { return data; }
@@ -131,6 +133,7 @@ public:
     constexpr
     auto  at() const noexcept -> data_type const &  { return data; }
 
+    // Member data
     //! The element, public to support aggregate initialization.
     data_type  data;
 };
@@ -147,27 +150,57 @@ data type.
     \tparam N  The remaining extents.  May be empty.
  */
 template < typename T, std::size_t M, std::size_t ...N >
-class array_md<T, M, N...>
+struct array_md<T, M, N...>
 {
-    typedef array_md<T, N...>  previous_type;
-
-public:
+    // Core types
     //! The element type.  Gives access to the first template parameter.
-    typedef T                                  value_type;
+    typedef T                                               value_type;
     //! The type for the direct elements of #data.  Equal to #value_type only
     //! when #dimensionality is 1.
-    typedef typename previous_type::data_type  direct_element_type;
+    typedef typename array_md<T, N...>::data_type  direct_element_type;
     //! The type of #data; not equal to #value_type in recursive cases.
-    typedef direct_element_type                data_type[ M ];
+    typedef direct_element_type                              data_type[ M ];
     //! The type for size-based meta-data and access indices.
-    typedef std::size_t                        size_type;
+    typedef std::size_t                                      size_type;
 
+    // Sizing parameters
     //! The number of extents supplied as template parameters.
     static constexpr  size_type  dimensionality = 1u + sizeof...( N );
     //! The array extents, in an array.
     static constexpr  size_type  static_sizes[] = { M, N... };
     //! The total number of elements (of #value_type).
-    static constexpr  size_type  static_size = M * previous_type::static_size;
+    static constexpr  size_type  static_size = sizeof( data_type ) / sizeof(
+     value_type );
+
+    // Element (or sub-array) access
+    /** \brief  Access to element data, with depth of exactly one.
+
+    Provides access to a slice of the element data, with one index.  If
+    #dimensionality is 1, then an element is directly returned.  Otherwise,
+    an array slice of the immediately-lower level is returned.  For example, an
+    `array_md<int, 6, 5, 4>` will return an `int(&)[5][4]` from this method.
+
+    If a slice is returned, then `operator []` or other means can be used to
+    continue indexing.  The same applies if the element type supports
+    indexing itself (i.e. it's a bulit-in array, built-in data pointer, or a
+    class type with `operator []` support).
+
+    The supplied index value is **not** bounds-checked.
+
+        \pre  *i* \< #static_sizes[ 0 ]
+
+        \param i  The index of the selected element (array).
+
+        \throws  Nothing.
+
+        \returns  A reference to the given element (array).
+     */
+    auto  operator []( size_type i ) noexcept -> direct_element_type &
+    { return data[i]; }
+    //! \overload
+    constexpr
+    auto  operator []( size_type i ) const noexcept ->direct_element_type const&
+    { return data[i]; }
 
     /** \brief  Access to element data, arbitrary depth.
 
@@ -220,35 +253,6 @@ public:
         return boost::slice(data, static_cast<Indices &&>( i )...);
     }
 
-    /** \brief  Access to element data, with depth of exactly one.
-
-    Provides access to a slice of the element data, with one index.  If
-    #dimensionality is 1, then an element is directly returned.  Otherwise,
-    an array slice of the immediately-lower level is returned.  For example, an
-    `array_md<int, 6, 5, 4>` will return an `int(&)[5][4]` from this method.
-
-    If a slice is returned, then `operator []` or other means can be used to
-    continue indexing.  The same applies if the element type supports
-    indexing itself (i.e. it's a bulit-in array, built-in data pointer, or a
-    class type with `operator []` support).
-
-    The supplied index value is **not** bounds-checked.
-
-        \pre  *i* \< #static_sizes[ 0 ]
-
-        \param i  The index of the selected element (array).
-
-        \throws  Nothing.
-
-        \returns  A reference to the given element (array).
-     */
-    auto  operator []( size_type i ) noexcept -> direct_element_type &
-    { return data[i]; }
-    //! \overload
-    constexpr
-    direct_element_type const &  operator []( size_type i ) const noexcept
-    { return data[i]; }
-
     /** \brief  Access to element data, arbitrary depth, bounds-checked.
 
     Works like #operator()(), except for added checking for the indices to be
@@ -287,6 +291,7 @@ public:
          data, static_cast<Indices &&>( i )...);
     }
 
+    // Member data
     //! The element(s), public to support aggregate initialization.
     data_type  data;
 };

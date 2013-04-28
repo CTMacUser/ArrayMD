@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     BOOST_CHECK_NO_THROW( t4.at()[1] );
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE( test_nonsingular_static, T, test_types )
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
 {
     using boost::container::array_md;
     using std::is_same;
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_nonsingular_static, T, test_types )
      sizeof( T )) );
 }
 
-BOOST_AUTO_TEST_CASE( test_nonsingular_dynamic )
+BOOST_AUTO_TEST_CASE( test_compound_dynamic )
 {
     using boost::container::array_md;
     using std::strcmp;
