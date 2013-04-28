@@ -67,8 +67,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     BOOST_CHECK_EQUAL( t2(), (T)10 );
 
     // Check direct access
-    t1.data = static_cast<T>( 6 );
-    BOOST_CHECK_EQUAL( t2.data, (T)6 );
+    t1.data_block = static_cast<T>( 6 );
+    BOOST_CHECK_EQUAL( t2.data_block, (T)6 );
 
     // Check "at"
     t1.at() = static_cast<T>( 100 );
@@ -86,9 +86,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     BOOST_CHECK_EQUAL( t4()[1], (T)0 );
 
     t3()[ 1 ] = static_cast<T>( 15 );
-    t3.data[ 0 ] = T{};
+    t3.data_block[ 0 ] = T{};
     BOOST_CHECK_EQUAL( T(), t4()[0] );
-    BOOST_CHECK_EQUAL( (T)15, t4.data[1] );
+    BOOST_CHECK_EQUAL( (T)15, t4.data_block[1] );
 
     t3.at()[ 0 ] = !T{};
     BOOST_CHECK_EQUAL( (T)1, t4.at()[0] );
@@ -170,20 +170,32 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
     t3[ 1 ][ 1 ][ 0 ] = 'B';
     BOOST_CHECK( 0 == strcmp(t4[ 1 ][ 1 ], "Batch") );
 
+    // Check direct access
+    BOOST_CHECK_EQUAL( t1.data_block[0], 4 );
+    BOOST_CHECK_EQUAL( 12, t1.data_block[1] );
+    t1.data_block[ 0 ] = 2;
+    t1.data_block[ 1 ]++;
+    BOOST_CHECK_EQUAL( 2, t2.data_block[0] );
+    BOOST_CHECK_EQUAL( t2.data_block[1], 13 );
+
+    BOOST_CHECK( strcmp(t3.data_block[ 0 ][ 0 ], "Hello") == 0 );
+    t3.data_block[ 0 ][ 0 ][ 0 ] = 'M';
+    BOOST_CHECK( strcmp(t4.data_block[ 0 ][ 0 ], "Mello") == 0 );
+
     // Try out the "operator ()" interface
-    BOOST_CHECK_EQUAL( t1()[0], 4 );
-    BOOST_CHECK_EQUAL( 12, t1()[1] );
+    BOOST_CHECK_EQUAL( t1()[0], 2 );
+    BOOST_CHECK_EQUAL( 13, t1()[1] );
     t1()[ 0 ] = 7;
     t1()[ 1 ]++;
     BOOST_CHECK_EQUAL( 7, t2()[0] );
-    BOOST_CHECK_EQUAL( t2()[1], 13 );
+    BOOST_CHECK_EQUAL( t2()[1], 14 );
 
     BOOST_CHECK_EQUAL( t1(0), 7 );
-    BOOST_CHECK_EQUAL( 13, t1(1) );
+    BOOST_CHECK_EQUAL( 14, t1(1) );
     t1( 0 ) = 3;
     t1( 1 )++;
     BOOST_CHECK_EQUAL( 3, t2(0) );
-    BOOST_CHECK_EQUAL( t2(1), 14 );
+    BOOST_CHECK_EQUAL( t2(1), 15 );
 
     // with more dimensions
     BOOST_CHECK( strcmp(t3()[ 0 ][ 1 ], "World") == 0 );
@@ -211,18 +223,18 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
 
     // Try out "at"
     BOOST_CHECK_EQUAL( t1.at()[0], 3 );
-    BOOST_CHECK_EQUAL( 14, t1.at()[1] );
+    BOOST_CHECK_EQUAL( 15, t1.at()[1] );
     t1.at()[ 0 ] = 5;
     t1.at()[ 1 ]++;
     BOOST_CHECK_EQUAL( 5, t2.at()[0] );
-    BOOST_CHECK_EQUAL( t2.at()[1], 15 );
+    BOOST_CHECK_EQUAL( t2.at()[1], 16 );
 
     BOOST_CHECK_EQUAL( t1.at(0), 5 );
-    BOOST_CHECK_EQUAL( 15, t1.at(1) );
+    BOOST_CHECK_EQUAL( 16, t1.at(1) );
     t1.at( 0 ) = 9;
     t1.at( 1 )++;
     BOOST_CHECK_EQUAL( 9, t2.at(0) );
-    BOOST_CHECK_EQUAL( t2.at(1), 16 );
+    BOOST_CHECK_EQUAL( t2.at(1), 17 );
 
     BOOST_CHECK_NO_THROW( t1.at() );
     BOOST_CHECK_NO_THROW( t2.at() );

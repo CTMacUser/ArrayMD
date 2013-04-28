@@ -87,7 +87,7 @@ struct array_md<T>
     // Core types
     //! The element type.  Gives access to the template parameter.
     typedef T           value_type;
-    //! The type of #data; equal to #value_type in the base case.
+    //! The type of #data_block; equal to #value_type in the base case.
     typedef value_type   data_type;
     //! The type for size-based meta-data.
     typedef std::size_t  size_type;
@@ -111,10 +111,12 @@ struct array_md<T>
 
         \returns  A reference to the sole element.
      */
-    auto  operator ()() noexcept -> data_type &              { return data; }
+    auto  operator ()() noexcept -> data_type &
+    { return data_block; }
     //! \overload
     constexpr
-    auto  operator ()() const noexcept -> data_type const &  { return data; }
+    auto  operator ()() const noexcept -> data_type const &
+    { return data_block; }
 
     /** \brief  Whole-object access to the element data, bounds-checked.
 
@@ -128,14 +130,14 @@ struct array_md<T>
 
         \returns  A reference to the sole element.
      */
-    auto  at()       noexcept -> data_type &        { return data; }
+    auto  at()       noexcept -> data_type &        { return data_block; }
     //! \overload
     constexpr
-    auto  at() const noexcept -> data_type const &  { return data; }
+    auto  at() const noexcept -> data_type const &  { return data_block; }
 
     // Member data
     //! The element, public to support aggregate initialization.
-    data_type  data;
+    data_type  data_block;
 };
 
 /** \brief  Recursive-case specialization of `array_md`.
@@ -155,10 +157,10 @@ struct array_md<T, M, N...>
     // Core types
     //! The element type.  Gives access to the first template parameter.
     typedef T                                               value_type;
-    //! The type for the direct elements of #data.  Equal to #value_type only
-    //! when #dimensionality is 1.
+    //! The type for the direct elements of #data_block.  Equal to #value_type
+    //! only when #dimensionality is 1.
     typedef typename array_md<T, N...>::data_type  direct_element_type;
-    //! The type of #data; not equal to #value_type in recursive cases.
+    //! The type of #data_block; not equal to #value_type in recursive cases.
     typedef direct_element_type                              data_type[ M ];
     //! The type for size-based meta-data and access indices.
     typedef std::size_t                                      size_type;
@@ -196,11 +198,11 @@ struct array_md<T, M, N...>
         \returns  A reference to the given element (array).
      */
     auto  operator []( size_type i ) noexcept -> direct_element_type &
-    { return data[i]; }
+    { return data_block[i]; }
     //! \overload
     constexpr
     auto  operator []( size_type i ) const noexcept ->direct_element_type const&
-    { return data[i]; }
+    { return data_block[i]; }
 
     /** \brief  Access to element data, arbitrary depth.
 
@@ -240,7 +242,7 @@ struct array_md<T, M, N...>
       -> typename boost::indexing_result<data_type &, Indices...>::type
     {
         static_assert( sizeof...(i) <= dimensionality, "Too many indices" );
-        return boost::slice(data, static_cast<Indices &&>( i )...);
+        return boost::slice(data_block, static_cast<Indices &&>( i )...);
     }
     //! \overload
     template < typename ...Indices >
@@ -250,7 +252,7 @@ struct array_md<T, M, N...>
       -> typename boost::indexing_result<data_type const &, Indices...>::type
     {
         static_assert( sizeof...(i) <= dimensionality, "Too many indices" );
-        return boost::slice(data, static_cast<Indices &&>( i )...);
+        return boost::slice(data_block, static_cast<Indices &&>( i )...);
     }
 
     /** \brief  Access to element data, arbitrary depth, bounds-checked.
@@ -277,7 +279,7 @@ struct array_md<T, M, N...>
         static_assert( sizeof...(i) <= dimensionality, "Too many indices" );
 
         return boost::checked_slice(std::out_of_range{ "Index out of bounds" },
-         data, static_cast<Indices &&>( i )...);
+         data_block, static_cast<Indices &&>( i )...);
     }
     //! \overload
     template < typename ...Indices >
@@ -288,12 +290,12 @@ struct array_md<T, M, N...>
         static_assert( sizeof...(i) <= dimensionality, "Too many indices" );
 
         return boost::checked_slice(std::out_of_range{ "Index out of bounds" },
-         data, static_cast<Indices &&>( i )...);
+         data_block, static_cast<Indices &&>( i )...);
     }
 
     // Member data
     //! The element(s), public to support aggregate initialization.
-    data_type  data;
+    data_type  data_block;
 };
 
 
