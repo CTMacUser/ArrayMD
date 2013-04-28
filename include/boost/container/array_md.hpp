@@ -92,13 +92,41 @@ struct array_md<T>
     //! The type for size-based meta-data.
     typedef std::size_t  size_type;
 
+    // Data-block types
+    //! The type for pointing to an element.
+    typedef value_type *              pointer;
+    //! The type for pointing to an element, immutable access.
+    typedef value_type const *  const_pointer;
+
     // Sizing parameters
     //! The number of array extents supplied as dimensions.
     static constexpr  size_type  dimensionality = 0u;
     //! The total number of elements (of #value_type).
     static constexpr  size_type  static_size = 1u;
 
+    // Capacity
+    /** \brief  Returns element count.
+
+    Since this type has a fixed number of elements, this function's
+    implementation can be trivial and `constexpr`.
+
+        \returns  The number of stored elements (of #value_type).
+     */
+    constexpr
+    auto  size() const noexcept -> size_type  { return static_size; }
+
     // Element access
+    /** \brief  Returns underlying access.
+
+    `[ data(), data() + size() )` is a valid range of #value_type covering all
+    the stored elements.
+
+        \returns  The address of the first element (of #value_type).
+     */
+    auto  data()       noexcept -> pointer        { return &data_block; }
+    //! \overload
+    auto  data() const noexcept -> const_pointer  { return &data_block; }
+
     /** \brief  Whole-object access to the element data.
 
     Since this version of `array_md` doesn't carry an internal array, only
@@ -165,6 +193,12 @@ struct array_md<T, M, N...>
     //! The type for size-based meta-data and access indices.
     typedef std::size_t                                      size_type;
 
+    // Data-block types
+    //! The type for pointing to an element.
+    typedef value_type *              pointer;
+    //! The type for pointing to an element, immutable access.
+    typedef value_type const *  const_pointer;
+
     // Sizing parameters
     //! The number of extents supplied as template parameters.
     static constexpr  size_type  dimensionality = 1u + sizeof...( N );
@@ -174,7 +208,35 @@ struct array_md<T, M, N...>
     static constexpr  size_type  static_size = sizeof( data_type ) / sizeof(
      value_type );
 
+    // Capacity
+    /** \brief  Returns element count.
+
+    Since this type has a fixed number of elements, this function's
+    implementation can be trivial and `constexpr`.
+
+        \returns  The number of stored elements (of #value_type).
+     */
+    constexpr
+    auto  size() const noexcept -> size_type  { return static_size; }
+
     // Element (or sub-array) access
+    /** \brief  Returns underlying access.
+
+    `[ data(), data() + size() )` is a valid range of #value_type covering all
+    the stored elements.  Using this method flattens the dimensions away to
+    linear access.
+
+        \returns  The address of the first element (of #value_type).
+     */
+    auto  data()       noexcept -> pointer
+    { return static_cast<pointer>(static_cast<void *>( &data_block )); }
+    //! \overload
+    auto  data() const noexcept -> const_pointer
+    {
+        return static_cast<const_pointer>(
+         static_cast<void const *>(&data_block) );
+    }
+
     /** \brief  Access to element data, with depth of exactly one.
 
     Provides access to a slice of the element data, with one index.  If

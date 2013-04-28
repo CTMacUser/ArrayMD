@@ -47,7 +47,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_static, T, test_types )
     BOOST_REQUIRE_EQUAL( sample_type::dimensionality, 0u );
     BOOST_REQUIRE_EQUAL( sample_type::static_size, 1u );
 
-    BOOST_REQUIRE( (sizeof( sample_type ) >= sizeof( T )) );
+    BOOST_REQUIRE( (is_same<T *, typename sample_type::pointer>::value) );
+    BOOST_REQUIRE( (is_same<T const *, typename
+     sample_type::const_pointer>::value) );
+
+    BOOST_REQUIRE( sizeof( sample_type ) >= sizeof( T ) );
+    BOOST_REQUIRE_EQUAL( sizeof(typename sample_type::data_type), sizeof(T) );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
@@ -70,6 +75,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     t1.data_block = static_cast<T>( 6 );
     BOOST_CHECK_EQUAL( t2.data_block, (T)6 );
 
+    // Check raw access
+    BOOST_CHECK_EQUAL( t1.data(), &t1.data_block );
+    BOOST_CHECK_EQUAL( (T)6, *t1.data() );
+    *t1.data() = static_cast<T>( 19 );
+    BOOST_CHECK_EQUAL( static_cast<T>(19), *t2.data() );
+    BOOST_CHECK_EQUAL( &t2.data_block, t2.data() );
+
+    BOOST_CHECK_EQUAL( t1.size(), 1u );
+    BOOST_CHECK_EQUAL( 1u, t2.size() );
+
     // Check "at"
     t1.at() = static_cast<T>( 100 );
     BOOST_CHECK_EQUAL( t2.at(), (T)100 );
@@ -89,6 +104,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     t3.data_block[ 0 ] = T{};
     BOOST_CHECK_EQUAL( T(), t4()[0] );
     BOOST_CHECK_EQUAL( (T)15, t4.data_block[1] );
+
+    BOOST_CHECK_EQUAL( static_cast<T>(15), (*t3.data())[1] );
+    ( *t3.data() )[ 1 ] = static_cast<T>( 101 );
+    BOOST_CHECK_EQUAL( (*t4.data())[1], (T)101 );
 
     t3.at()[ 0 ] = !T{};
     BOOST_CHECK_EQUAL( (T)1, t4.at()[0] );
@@ -116,8 +135,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
     BOOST_REQUIRE_EQUAL( sample_type::static_sizes[1], 3u );
     BOOST_REQUIRE_EQUAL( sample_type::static_size, 21u );
 
-    BOOST_REQUIRE( (sizeof( sample_type ) >= sample_type::static_size *
-     sizeof( T )) );
+    BOOST_REQUIRE( (is_same<T *, typename sample_type::pointer>::value) );
+    BOOST_REQUIRE( (is_same<T const *, typename
+     sample_type::const_pointer>::value) );
+
+    BOOST_REQUIRE( sizeof(sample_type) >= sample_type::static_size *
+     sizeof(T) );
+    BOOST_REQUIRE_EQUAL( sizeof(typename sample_type::data_type),
+     sizeof(T[ 7 ][ 3 ]) );
 
     typedef array_md<T, 5>  sample2_type;
 
@@ -132,8 +157,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
     BOOST_REQUIRE_EQUAL( sample2_type::static_sizes[0], 5u );
     BOOST_REQUIRE_EQUAL( sample2_type::static_size, 5u );
 
-    BOOST_REQUIRE( (sizeof( sample2_type ) >= sample2_type::static_size *
-     sizeof( T )) );
+    BOOST_REQUIRE( (is_same<T *, typename sample2_type::pointer>::value) );
+    BOOST_REQUIRE( (is_same<T const *, typename
+     sample2_type::const_pointer>::value) );
+
+    BOOST_REQUIRE( sizeof(sample2_type) >= sample2_type::static_size *
+     sizeof(T) );
+    BOOST_REQUIRE_EQUAL( sizeof(typename sample2_type::data_type),
+     sizeof(T[ 5 ]) );
 }
 
 BOOST_AUTO_TEST_CASE( test_compound_dynamic )
@@ -182,20 +213,37 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
     t3.data_block[ 0 ][ 0 ][ 0 ] = 'M';
     BOOST_CHECK( strcmp(t4.data_block[ 0 ][ 0 ], "Mello") == 0 );
 
+    // Check raw access
+    BOOST_CHECK_EQUAL( *t1.data(), 2 );
+    BOOST_CHECK_EQUAL( 13, *(t1.data() + 1) );
+    *t1.data() = -23;
+    ( *(t1.data() + 1) )++;
+    BOOST_CHECK_EQUAL( -23, *t2.data() );
+    BOOST_CHECK_EQUAL( *(t2.data() + 1), 14 );
+
+    BOOST_CHECK( strcmp(*t3.data(), "Mello") == 0 );
+    ( *t3.data() )[ 3 ] = 'k';
+    BOOST_CHECK( strcmp(*t4.data(), "Melko") == 0 );
+
+    BOOST_CHECK_EQUAL( 2u, t1.size() );
+    BOOST_CHECK_EQUAL( t2.size(), 2u );
+    BOOST_CHECK_EQUAL( 4u, t3.size() );
+    BOOST_CHECK_EQUAL( t4.size(), 4u );
+
     // Try out the "operator ()" interface
-    BOOST_CHECK_EQUAL( t1()[0], 2 );
-    BOOST_CHECK_EQUAL( 13, t1()[1] );
+    BOOST_CHECK_EQUAL( t1()[0], -23 );
+    BOOST_CHECK_EQUAL( 14, t1()[1] );
     t1()[ 0 ] = 7;
     t1()[ 1 ]++;
     BOOST_CHECK_EQUAL( 7, t2()[0] );
-    BOOST_CHECK_EQUAL( t2()[1], 14 );
+    BOOST_CHECK_EQUAL( t2()[1], 15 );
 
     BOOST_CHECK_EQUAL( t1(0), 7 );
-    BOOST_CHECK_EQUAL( 14, t1(1) );
+    BOOST_CHECK_EQUAL( 15, t1(1) );
     t1( 0 ) = 3;
     t1( 1 )++;
     BOOST_CHECK_EQUAL( 3, t2(0) );
-    BOOST_CHECK_EQUAL( t2(1), 15 );
+    BOOST_CHECK_EQUAL( t2(1), 16 );
 
     // with more dimensions
     BOOST_CHECK( strcmp(t3()[ 0 ][ 1 ], "World") == 0 );
@@ -223,18 +271,18 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
 
     // Try out "at"
     BOOST_CHECK_EQUAL( t1.at()[0], 3 );
-    BOOST_CHECK_EQUAL( 15, t1.at()[1] );
+    BOOST_CHECK_EQUAL( 16, t1.at()[1] );
     t1.at()[ 0 ] = 5;
     t1.at()[ 1 ]++;
     BOOST_CHECK_EQUAL( 5, t2.at()[0] );
-    BOOST_CHECK_EQUAL( t2.at()[1], 16 );
+    BOOST_CHECK_EQUAL( t2.at()[1], 17 );
 
     BOOST_CHECK_EQUAL( t1.at(0), 5 );
-    BOOST_CHECK_EQUAL( 16, t1.at(1) );
+    BOOST_CHECK_EQUAL( 17, t1.at(1) );
     t1.at( 0 ) = 9;
     t1.at( 1 )++;
     BOOST_CHECK_EQUAL( 9, t2.at(0) );
-    BOOST_CHECK_EQUAL( t2.at(1), 17 );
+    BOOST_CHECK_EQUAL( t2.at(1), 18 );
 
     BOOST_CHECK_NO_THROW( t1.at() );
     BOOST_CHECK_NO_THROW( t2.at() );
