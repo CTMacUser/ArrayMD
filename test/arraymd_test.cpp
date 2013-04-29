@@ -58,6 +58,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_static, T, test_types )
 BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
 {
     using boost::container::array_md;
+    using std::length_error;
 
     typedef array_md<T>  sample_type;
 
@@ -91,6 +92,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     BOOST_CHECK_NO_THROW( t1.at() );
     BOOST_CHECK_NO_THROW( t2.at() );
 
+    // Check initialization-list indices
+    t1( {} ) = static_cast<T>( 39 );
+    BOOST_CHECK_EQUAL( t2({}), (T)39 );
+    t1.at( {} ) = static_cast<T>( 43 );
+    BOOST_CHECK_EQUAL( t2.at({}), (T)43 );
+    BOOST_CHECK_NO_THROW( t1.at({}) );
+    BOOST_CHECK_NO_THROW( t2.at({}) );
+    BOOST_CHECK_THROW( t1.at({ 1 }), length_error );
+    BOOST_CHECK_THROW( t2.at({ 0, 3 }), length_error );
+
     // Check with array-type as element type
     typedef array_md<T[2]>  sample2_type;
 
@@ -113,6 +124,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     BOOST_CHECK_EQUAL( (T)1, t4.at()[0] );
     BOOST_CHECK_NO_THROW( t3.at()[1] );
     BOOST_CHECK_NO_THROW( t4.at()[1] );
+
+    t3( {} )[ 1 ] = T{};
+    BOOST_CHECK_EQUAL( T(0), t4({})[1] );
+    t3.at( {} )[ 0 ] = T(71);
+    BOOST_CHECK_EQUAL( (T)71, t4.at({})[0] );
+    BOOST_CHECK_NO_THROW( t3.at({}) );
+    BOOST_CHECK_NO_THROW( t4.at({}) );
+    BOOST_CHECK_THROW( t3.at({ 1, 0 }), length_error );
+    BOOST_CHECK_THROW( t4.at({ 7 }), length_error );
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
@@ -172,6 +192,7 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
     using boost::container::array_md;
     using std::strcmp;
     using std::out_of_range;
+    using std::length_error;
 
     // Bracket-based indexing
     typedef array_md<int, 2>  sample_type;
@@ -330,6 +351,58 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
     t3.at( 1, 1, 0 ) = 'M';  // !strcmp( t4.at(1, 1), "Munch" )
     BOOST_CHECK_EQUAL( t4.at(1, 1, 4), 'h' );
 #endif
+
+    // Try out initialization-list indices
+    BOOST_CHECK_EQUAL( t1[{ 0 }], 9 );
+    BOOST_CHECK_EQUAL( 18, t1[{ 1 }] );
+    t1[ {0} ] = -1;
+    t1[ {1} ]++;
+    BOOST_CHECK_EQUAL( -1, t2[{ 0 }] );
+    BOOST_CHECK_EQUAL( t2[{ 1 }], 19 );
+
+    t3[ {1, 1} ][ 0 ] = 'P';
+    BOOST_CHECK_EQUAL( 0, strcmp(t4[ {1, 1} ], "Punch") );
+
+    BOOST_CHECK_EQUAL( t1({ 0 }), -1 );
+    BOOST_CHECK_EQUAL( 19, t1({ 1 }) );
+    t1( {0} ) = 21;
+    t1( {1} )++;
+    BOOST_CHECK_EQUAL( 21, t2({ 0 }) );
+    BOOST_CHECK_EQUAL( t2({ 1 }), 20 );
+
+    t3( {1, 1} )[ 1 ] = 'i';
+    BOOST_CHECK_EQUAL( 0, strcmp(t4( {1, 1} ), "Pinch") );
+
+    BOOST_CHECK_EQUAL( t1.at({ 0 }), 21 );
+    BOOST_CHECK_EQUAL( 20, t1.at({ 1 }) );
+    t1.at( {0} ) = 29;
+    t1.at( {1} )++;
+    BOOST_CHECK_EQUAL( 29, t2.at({ 0 }) );
+    BOOST_CHECK_EQUAL( t2.at({ 1 }), 21 );
+
+    t3.at( {1, 1} )[ 2 ] = 't';
+    BOOST_CHECK_EQUAL( 0, strcmp(t4.at( {1, 1} ), "Pitch") );
+
+    BOOST_CHECK_NO_THROW( t1.at({ 0 }) );
+    BOOST_CHECK_NO_THROW( t2.at({ 1 }) );
+    BOOST_CHECK_THROW( t1.at({ 2 }), out_of_range );
+    BOOST_CHECK_THROW( t2.at({ 7 }), out_of_range );
+    BOOST_CHECK_THROW( t1.at({ 8 }), out_of_range );
+    BOOST_CHECK_THROW( t1.at({}), length_error );
+    BOOST_CHECK_THROW( t2.at({}), length_error );
+    BOOST_CHECK_THROW( t1.at({1, 2}), length_error );
+    BOOST_CHECK_THROW( t2.at({9, 10, 211}), length_error );
+
+    BOOST_CHECK_NO_THROW( t3.at({ 0, 0 }) );
+    BOOST_CHECK_NO_THROW( t4.at({ 1, 1 }) );
+    BOOST_CHECK_THROW( t3.at({}), length_error );
+    BOOST_CHECK_THROW( t4.at({}), length_error );
+    BOOST_CHECK_THROW( t3.at({ 2 }), length_error );
+    BOOST_CHECK_THROW( t4.at({ 1 }), length_error );
+    BOOST_CHECK_THROW( t3.at({ 204, 1L }), out_of_range );
+    BOOST_CHECK_THROW( t4.at({ 0, 0xAAu }), out_of_range );
+    BOOST_CHECK_THROW( t3.at({ 1, 2, 3 }), length_error );
+    BOOST_CHECK_THROW( t4.at({ 9, 8, 7 }), length_error );
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_basics

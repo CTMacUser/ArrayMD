@@ -29,6 +29,7 @@
 #define BOOST_CONTAINER_ARRAY_MD_HPP
 
 #include <cstddef>
+#include <initializer_list>
 #include <stdexcept>
 
 #include "boost/type_traits/indexing.hpp"
@@ -145,6 +146,28 @@ struct array_md<T>
     constexpr
     auto  operator ()() const noexcept -> data_type const &
     { return data_block; }
+    /** \brief  Access to element data, "full" depth.
+
+    Provides access to an element, based on the indices given as a standard
+    initializer list.  Since there is no internal array, only an empty list is
+    acceptable.  If the element type is a built-in array or otherwise supports
+    `operator []`, then further indexing has to be supplied after this call.
+    The supplied index tuple is **not** bounds-checked.
+
+        \pre  The `size()` member function of the submitted list has to return
+              #dimensionality.
+
+        \throws  Nothing.
+
+        \returns  A reference to the sole element.
+     */
+    auto  operator ()( std::initializer_list<size_type> ) noexcept
+      -> value_type &
+    { return data_block; }
+    //! \overload
+    auto  operator ()( std::initializer_list<size_type> ) const noexcept
+      -> value_type const &
+    { return data_block; }
 
     /** \brief  Whole-object access to the element data, bounds-checked.
 
@@ -162,6 +185,33 @@ struct array_md<T>
     //! \overload
     constexpr
     auto  at() const noexcept -> data_type const &  { return data_block; }
+    /** \brief  Access to element data, "full" depth, bounds-checked.
+
+    Works like #operator()(std::initializer_list<size_type>), except for added
+    checking for the indices to be within their bounds.  But since this version
+    doesn't take indices, the only check is for the number of indices.
+
+        \param i  The indices of the selected element.
+
+        \see  #operator()(std::initializer_list<size_type>)
+
+        \throws  std::length_error  if i.size() != #dimensionality.
+
+        \returns  A reference to the sole element.
+     */
+    auto  at( std::initializer_list<size_type> i ) -> value_type &
+    {
+        if ( i.size() )
+            throw std::length_error{ "Too many indices" };
+        return data_block;
+    }
+    //! \overload
+    auto  at( std::initializer_list<size_type> i ) const -> value_type const &
+    {
+        if ( i.size() )
+            throw std::length_error{ "Too many indices" };
+        return data_block;
+    }
 
     // Member data
     //! The element, public to support aggregate initialization.
@@ -266,6 +316,78 @@ struct array_md<T, M, N...>
     auto  operator []( size_type i ) const noexcept ->direct_element_type const&
     { return data_block[i]; }
 
+    /** \brief  Access to element data, full depth.
+
+    Provides access to one element, with its coordinates expressed as a standard
+    initializer list.
+
+    If the element type is a built-in array or otherwise supports `operator []`,
+    then further indexing has to be supplied after this call.
+
+    The supplied index tuple is **not** bounds-checked.
+
+        \pre  i.size() == #dimensionality
+        \pre  For each valid *K*, when advancing *K* places into *i*, the value
+              at that place has to be less than #static_sizes[ *K* ].
+
+        \param i  The indices of the selected element.
+
+        \throws  Nothing.
+
+        \returns  A reference to the given element.
+     */
+    auto  operator []( std::initializer_list<size_type> i ) noexcept
+      -> value_type &
+    {
+        // Keep the mutable and const versions in sync
+        return const_cast<value_type &>( const_cast<array_md const
+         *>(this)->operator [](i) );
+    }
+    //! \overload
+    auto  operator []( std::initializer_list<size_type> i ) const noexcept
+      -> value_type const &
+    {
+        const_pointer          start = data();
+        size_type             stride = static_size;
+        size_type const *  pfraction = static_sizes;
+
+        for ( auto const  ii : i )
+        {
+            stride /= *pfraction++;
+            start += stride * ii;
+        }
+        return *start;
+    }
+
+    /** \brief  Access to element data, full depth.
+
+    Provides access to an element of the internal array object, based on the
+    indices given as a standard initializer list.
+
+    If the element type is a built-in array or otherwise supports `operator []`,
+    then further indexing has to be supplied after this call.
+
+    The supplied index tuple is **not** bounds-checked.
+
+        \pre  i.size() == #dimensionality
+        \pre  For each valid *K*, when advancing *K* places into *i*, the value
+              at that place has to be less than #static_sizes[ *K* ].
+
+        \param i  The indices of the selected element.
+
+        \see  #operator[](std::initializer_list<size_type>)
+
+        \throws  Nothing.
+
+        \returns  A reference to the requested element.
+     */
+    auto  operator ()( std::initializer_list<size_type> i ) noexcept
+      -> value_type &
+    { return operator []( i ); }
+    //! \overload
+    auto  operator ()( std::initializer_list<size_type> i ) const noexcept
+      -> value_type const &
+    { return operator []( i ); }
     /** \brief  Access to element data, arbitrary depth.
 
     Provides access to some part of the internal array object, based on how
@@ -317,18 +439,67 @@ struct array_md<T, M, N...>
         return boost::slice(data_block, static_cast<Indices &&>( i )...);
     }
 
+    /** \brief  Access to element data, full depth, bounds-checked.
+
+    Works like #operator()(std::initializer_list<size_type>), except for added
+    checking for the amount of indices and if they're within their bounds.
+
+        \param i  The indices of the selected element.
+
+        \see  #operator()(std::initializer_list<size_type>)
+
+        \throws  std::length_error  if i.size() != #dimensionality.
+        \throws  std::out_of_range  if an index is out-of-bounds.
+
+        \returns  A reference to the requested element.
+     */
+    auto  at( std::initializer_list<size_type> i ) -> value_type &
+    {
+        pointer                start = data();
+        size_type             stride = static_size;
+        size_type const *  pfraction = static_sizes;
+
+        if ( i.size() != dimensionality )
+            throw std::length_error{ "Wrong number of indices" };
+        for ( auto const  ii : i )
+        {
+            stride /= *pfraction;
+            if ( ii >= *pfraction++ )
+                throw std::out_of_range{ "Index out of bounds" };
+            start += stride * ii;
+        }
+        return *start;
+    }
+    //! \overload
+    auto  at( std::initializer_list<size_type> i ) const -> value_type const &
+    {
+        const_pointer          start = data();
+        size_type             stride = static_size;
+        size_type const *  pfraction = static_sizes;
+
+        if ( i.size() != dimensionality )
+            throw std::length_error{ "Wrong number of indices" };
+        for ( auto const  ii : i )
+        {
+            stride /= *pfraction;
+            if ( ii >= *pfraction++ )
+                throw std::out_of_range{ "Index out of bounds" };
+            start += stride * ii;
+        }
+        return *start;
+    }
     /** \brief  Access to element data, arbitrary depth, bounds-checked.
 
-    Works like #operator()(), except for added checking for the indices to be
-    within their bounds.
+    Works like #operator()(Indices), except for added checking for the indices
+    to be within their bounds.
 
         \pre  0 \<= `sizeof...(i)` \<= #dimensionality.
 
         \param i  The indices for the selected element or slice.  May be empty.
 
-        \see  #operator()()
+        \see  #operator()(Indices)
 
-        \throws  `std::out_of_range`  if an index is out-of-bounds.
+        \throws  std::out_of_range  if an index is out-of-bounds.
         \throws  Whatever  from converting an index to a built-in integer or
                  enumeration type.
 
