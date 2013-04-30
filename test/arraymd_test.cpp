@@ -50,6 +50,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_static, T, test_types )
     BOOST_REQUIRE( (is_same<T *, typename sample_type::pointer>::value) );
     BOOST_REQUIRE( (is_same<T const *, typename
      sample_type::const_pointer>::value) );
+    BOOST_REQUIRE( (is_same<T &, typename sample_type::reference>::value) );
+    BOOST_REQUIRE( (is_same<T const &, typename
+     sample_type::const_reference>::value) );
 
     BOOST_REQUIRE( sizeof( sample_type ) >= sizeof( T ) );
     BOOST_REQUIRE_EQUAL( sizeof(typename sample_type::data_type), sizeof(T) );
@@ -158,6 +161,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
     BOOST_REQUIRE( (is_same<T *, typename sample_type::pointer>::value) );
     BOOST_REQUIRE( (is_same<T const *, typename
      sample_type::const_pointer>::value) );
+    BOOST_REQUIRE( (is_same<T &, typename sample_type::reference>::value) );
+    BOOST_REQUIRE( (is_same<T const &, typename
+     sample_type::const_reference>::value) );
 
     BOOST_REQUIRE( sizeof(sample_type) >= sample_type::static_size *
      sizeof(T) );

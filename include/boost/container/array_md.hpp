@@ -98,6 +98,10 @@ struct array_md<T>
     typedef value_type *              pointer;
     //! The type for pointing to an element, immutable access.
     typedef value_type const *  const_pointer;
+    //! The type for referring to an element.
+    typedef value_type &              reference;
+    //! The type for referring to an element, immutable access.
+    typedef value_type const &  const_reference;
 
     // Sizing parameters
     //! The number of array extents supplied as dimensions.
@@ -161,12 +165,11 @@ struct array_md<T>
 
         \returns  A reference to the sole element.
      */
-    auto  operator ()( std::initializer_list<size_type> ) noexcept
-      -> value_type &
+    auto  operator ()( std::initializer_list<size_type> ) noexcept -> reference
     { return data_block; }
     //! \overload
     auto  operator ()( std::initializer_list<size_type> ) const noexcept
-      -> value_type const &
+      -> const_reference
     { return data_block; }
 
     /** \brief  Whole-object access to the element data, bounds-checked.
@@ -199,14 +202,14 @@ struct array_md<T>
 
         \returns  A reference to the sole element.
      */
-    auto  at( std::initializer_list<size_type> i ) -> value_type &
+    auto  at( std::initializer_list<size_type> i ) -> reference
     {
         if ( i.size() )
             throw std::length_error{ "Too many indices" };
         return data_block;
     }
     //! \overload
-    auto  at( std::initializer_list<size_type> i ) const -> value_type const &
+    auto  at( std::initializer_list<size_type> i ) const -> const_reference
     {
         if ( i.size() )
             throw std::length_error{ "Too many indices" };
@@ -248,6 +251,10 @@ struct array_md<T, M, N...>
     typedef value_type *              pointer;
     //! The type for pointing to an element, immutable access.
     typedef value_type const *  const_pointer;
+    //! The type for referring to an element.
+    typedef value_type &              reference;
+    //! The type for referring to an element, immutable access.
+    typedef value_type const &  const_reference;
 
     // Sizing parameters
     //! The number of extents supplied as template parameters.
@@ -337,7 +344,7 @@ struct array_md<T, M, N...>
         \returns  A reference to the given element.
      */
     auto  operator []( std::initializer_list<size_type> i ) noexcept
-      -> value_type &
+      -> reference
     {
         // Keep the mutable and const versions in sync
         return const_cast<value_type &>( const_cast<array_md const
@@ -345,7 +352,7 @@ struct array_md<T, M, N...>
     }
     //! \overload
     auto  operator []( std::initializer_list<size_type> i ) const noexcept
-      -> value_type const &
+      -> const_reference
     {
         const_pointer          start = data();
         size_type             stride = static_size;
@@ -382,11 +389,11 @@ struct array_md<T, M, N...>
         \returns  A reference to the requested element.
      */
     auto  operator ()( std::initializer_list<size_type> i ) noexcept
-      -> value_type &
+      -> reference
     { return operator []( i ); }
     //! \overload
     auto  operator ()( std::initializer_list<size_type> i ) const noexcept
-      -> value_type const &
+      -> const_reference
     { return operator []( i ); }
     /** \brief  Access to element data, arbitrary depth.
 
@@ -453,25 +460,14 @@ struct array_md<T, M, N...>
 
         \returns  A reference to the requested element.
      */
-    auto  at( std::initializer_list<size_type> i ) -> value_type &
+    auto  at( std::initializer_list<size_type> i ) -> reference
     {
-        pointer                start = data();
-        size_type             stride = static_size;
-        size_type const *  pfraction = static_sizes;
-
-        if ( i.size() != dimensionality )
-            throw std::length_error{ "Wrong number of indices" };
-        for ( auto const  ii : i )
-        {
-            stride /= *pfraction;
-            if ( ii >= *pfraction++ )
-                throw std::out_of_range{ "Index out of bounds" };
-            start += stride * ii;
-        }
-        return *start;
+        return const_cast<reference>( (this->*static_cast<auto
+         (array_md::*)(std::initializer_list<size_type>) const ->
+         const_reference>( &array_md::at ))(i) );
     }
     //! \overload
-    auto  at( std::initializer_list<size_type> i ) const -> value_type const &
+    auto  at( std::initializer_list<size_type> i ) const -> const_reference
     {
         const_pointer          start = data();
         size_type             stride = static_size;
@@ -490,14 +486,14 @@ struct array_md<T, M, N...>
     }
     /** \brief  Access to element data, arbitrary depth, bounds-checked.
 
-    Works like #operator()(Indices), except for added checking for the indices
-    to be within their bounds.
+    Works like #operator()(Indices&&...), except for added checking for the
+    indices to be within their bounds.
 
         \pre  0 \<= `sizeof...(i)` \<= #dimensionality.
 
         \param i  The indices for the selected element or slice.  May be empty.
 
-        \see  #operator()(Indices)
+        \see  #operator()(Indices&&...)
 
         \throws  std::out_of_range  if an index is out-of-bounds.
         \throws  Whatever  from converting an index to a built-in integer or
