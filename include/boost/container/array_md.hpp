@@ -130,6 +130,7 @@ struct array_md<T>
      */
     auto  data()       noexcept -> pointer        { return &data_block; }
     //! \overload
+    constexpr
     auto  data() const noexcept -> const_pointer  { return &data_block; }
 
     /** \brief  Whole-object access to the element data.
@@ -216,6 +217,36 @@ struct array_md<T>
         return data_block;
     }
 
+    // Range-for support
+    /** \brief  Forward iteration, start point
+
+    Generates a start point for iterating over this object's element data in a
+    forward direction.  Since the data is a single object, the iterator just
+    points to that sole object.
+
+        \throws  Nothing.
+
+        \returns  An iterator pointing to the sole element.
+     */
+    auto  begin()       noexcept ->       pointer  { return data(); }
+    //! \overload
+    constexpr
+    auto  begin() const noexcept -> const_pointer  { return data(); }
+    /** \brief  Forward iteration, end point
+
+    Generates an end point for iterating over this object's element data in a
+    forward direction.  Since the data is a single object, the iterator points
+    just past that sole object.
+
+        \throws  Nothing.
+
+        \returns  An iterator pointing to one past the sole element.
+     */
+    auto    end()       noexcept ->       pointer  { return data() + size(); }
+    //! \overload
+    constexpr
+    auto    end() const noexcept -> const_pointer  { return data() + size(); }
+
     // Member data
     //! The element, public to support aggregate initialization.
     data_type  data_block;
@@ -288,6 +319,7 @@ struct array_md<T, M, N...>
     auto  data()       noexcept -> pointer
     { return static_cast<pointer>(static_cast<void *>( &data_block )); }
     //! \overload
+    constexpr
     auto  data() const noexcept -> const_pointer
     {
         return static_cast<const_pointer>(
@@ -521,6 +553,42 @@ struct array_md<T, M, N...>
         return boost::checked_slice(std::out_of_range{ "Index out of bounds" },
          data_block, static_cast<Indices &&>( i )...);
     }
+
+    // Range-for support
+    /** \brief  Forward iteration, start point
+
+    Generates a start point for iterating over this object's element data in a
+    forward direction.  Progression through the elements is the "row-major"
+    order that C/C++ array layout rules imply.  The traversal order of
+    index-coordinates is invariant for a given value of #static_sizes, so
+    multiple traversals of the same object gives a stable experience.  And
+    iterating over several `array_md` objects in parallel, with the same
+    #static_sizes, starting point, and in-sync traversal amounts, will keep the
+    visited index-coordinates in sync.
+
+        \throws  Nothing.
+
+        \returns  An iterator pointing to the first element.  (At address
+                  `&((*this)[0]...[0])`)
+     */
+    auto  begin()       noexcept ->       pointer  { return data(); }
+    //! \overload
+    constexpr
+    auto  begin() const noexcept -> const_pointer  { return data(); }
+    /** \brief  Forward iteration, end point
+
+    Generates an end point for iterating over this object's element data in a
+    forward direction.
+
+        \throws  Nothing.
+
+        \returns  An iterator pointing to one past the last element.  (At
+                  address `&((*this)[static_sizes[0]][0]...[0])`)
+     */
+    auto    end()       noexcept ->       pointer  { return data() + size(); }
+    //! \overload
+    constexpr
+    auto    end() const noexcept -> const_pointer  { return data() + size(); }
 
     // Member data
     //! The element(s), public to support aggregate initialization.

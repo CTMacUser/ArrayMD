@@ -412,3 +412,54 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_basics
+
+
+// Unit tests for iteration  -------------------------------------------------//
+
+BOOST_AUTO_TEST_SUITE( test_array_md_iteration )
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_range_for, T, test_types )
+{
+    using boost::container::array_md;
+
+    // Singular array
+    array_md<T>        t1;
+    array_md<T> const  t2{ 2 };
+    T                  total = T{};
+
+    for ( auto &x1 : t1 )
+        x1 = static_cast<T>( 1 );
+    BOOST_CHECK_EQUAL( t1(), (T)1 );
+    BOOST_CHECK_EQUAL( t1.end() - t1.begin(), 1 );
+
+    BOOST_CHECK_EQUAL( t2(), (T)2 );
+    for ( auto const &x2 : t2 )
+        total += x2;
+    BOOST_CHECK_EQUAL( static_cast<T>(2), total );
+    BOOST_CHECK_EQUAL( t2.end() - t2.begin(), 1 );
+
+    // Compound array
+    array_md<T, 2, 3>          t3{ {{ 2, 3, 5 }, { 7, 11, 13 }} };
+    array_md<T, 2, 3> const &  t4 = t3;
+    T const                    results1[] = { 3, 4, 6, 8, 12, 14 };
+
+    for ( auto &x3 : t3 )
+        ++x3;
+    BOOST_CHECK_EQUAL_COLLECTIONS( t3.begin(), t3.end(), results1, results1 +
+     (sizeof( results1 ) / sizeof( results1[0] )) );
+    BOOST_CHECK_EQUAL( t3(0, 0), (T)3 );
+    BOOST_CHECK_EQUAL( t3(0, 1), (T)4 );
+    BOOST_CHECK_EQUAL( t3(0, 2), (T)6 );
+    BOOST_CHECK_EQUAL( t3(1, 0), (T)8 );
+    BOOST_CHECK_EQUAL( t3(1, 1), (T)12 );
+    BOOST_CHECK_EQUAL( t3(1, 2), (T)14 );
+    BOOST_CHECK_EQUAL( t3.end() - t3.begin(), 6 );
+
+    total = T{};
+    for ( auto const &x4 : t4 )
+        total += x4;
+    BOOST_CHECK_EQUAL( static_cast<T>(47), total );
+    BOOST_CHECK_EQUAL( t4.end() - t4.begin(), 6 );
+}
+
+BOOST_AUTO_TEST_SUITE_END()  // test_array_md_iteration
