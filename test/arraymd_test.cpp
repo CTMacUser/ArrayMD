@@ -43,6 +43,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_static, T, test_types )
     BOOST_REQUIRE( (is_same<T, typename sample_type::data_type>::value) );
     BOOST_REQUIRE( (is_same<std::size_t, typename
      sample_type::size_type>::value) );
+    BOOST_REQUIRE( (is_same<std::ptrdiff_t, typename
+     sample_type::difference_type>::value) );
 
     BOOST_REQUIRE_EQUAL( sample_type::dimensionality, 0u );
     BOOST_REQUIRE_EQUAL( sample_type::static_size, 1u );
@@ -53,6 +55,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_static, T, test_types )
     BOOST_REQUIRE( (is_same<T &, typename sample_type::reference>::value) );
     BOOST_REQUIRE( (is_same<T const &, typename
      sample_type::const_reference>::value) );
+    BOOST_REQUIRE( (is_same<T *, typename sample_type::iterator>::value) );
+    BOOST_REQUIRE( (is_same<T const *, typename
+     sample_type::const_iterator>::value) );
+    BOOST_REQUIRE( (std::is_convertible<typename sample_type::iterator, typename
+     sample_type::const_iterator>::value) );
 
     BOOST_REQUIRE( sizeof( sample_type ) >= sizeof( T ) );
     BOOST_REQUIRE_EQUAL( sizeof(typename sample_type::data_type), sizeof(T) );
@@ -89,6 +96,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     BOOST_CHECK_EQUAL( t1.size(), 1u );
     BOOST_CHECK_EQUAL( 1u, t2.size() );
 
+    BOOST_CHECK_EQUAL( t1.max_size(), 1u );
+    BOOST_CHECK_EQUAL( 1u, t2.max_size() );
+    BOOST_CHECK( not t1.empty() );
+    BOOST_CHECK( not t2.empty() );
+
     // Check "at"
     t1.at() = static_cast<T>( 100 );
     BOOST_CHECK_EQUAL( t2.at(), (T)100 );
@@ -123,6 +135,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_dynamic, T, test_types )
     ( *t3.data() )[ 1 ] = static_cast<T>( 101 );
     BOOST_CHECK_EQUAL( (*t4.data())[1], (T)101 );
 
+    BOOST_CHECK_EQUAL( t3.size(), 1u );
+    BOOST_CHECK_EQUAL( 1u, t4.size() );
+
+    BOOST_CHECK_EQUAL( t3.max_size(), 1u );
+    BOOST_CHECK_EQUAL( 1u, t4.max_size() );
+    BOOST_CHECK( not t3.empty() );
+    BOOST_CHECK( not t4.empty() );
+
     t3.at()[ 0 ] = !T{};
     BOOST_CHECK_EQUAL( (T)1, t4.at()[0] );
     BOOST_CHECK_NO_THROW( t3.at()[1] );
@@ -143,6 +163,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
     using boost::container::array_md;
     using std::is_same;
     using std::size_t;
+    using std::ptrdiff_t;
+    using std::is_convertible;
 
     typedef array_md<T, 7, 3>  sample_type;
 
@@ -152,6 +174,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
      sample_type::direct_element_type>::value) );
     BOOST_REQUIRE( (is_same<T[7][3], typename sample_type::data_type>::value) );
     BOOST_REQUIRE( (is_same<size_t, typename sample_type::size_type>::value) );
+    BOOST_REQUIRE( (is_same<ptrdiff_t, typename
+     sample_type::difference_type>::value) );
 
     BOOST_REQUIRE_EQUAL( sample_type::dimensionality, 2u );
     BOOST_REQUIRE_EQUAL( sample_type::static_sizes[0], 7u );
@@ -164,6 +188,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
     BOOST_REQUIRE( (is_same<T &, typename sample_type::reference>::value) );
     BOOST_REQUIRE( (is_same<T const &, typename
      sample_type::const_reference>::value) );
+    BOOST_REQUIRE( (is_same<T *, typename sample_type::iterator>::value) );
+    BOOST_REQUIRE( (is_same<T const *, typename
+     sample_type::const_iterator>::value) );
+    BOOST_REQUIRE( (is_convertible<typename sample_type::iterator, typename
+     sample_type::const_iterator>::value) );
 
     BOOST_REQUIRE( sizeof(sample_type) >= sample_type::static_size *
      sizeof(T) );
@@ -178,6 +207,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
      sample2_type::direct_element_type>::value) );
     BOOST_REQUIRE( (is_same<T[5], typename sample2_type::data_type>::value) );
     BOOST_REQUIRE( (is_same<size_t, typename sample2_type::size_type>::value) );
+    BOOST_REQUIRE( (is_same<ptrdiff_t, typename
+     sample2_type::difference_type>::value) );
 
     BOOST_REQUIRE_EQUAL( sample2_type::dimensionality, 1u );
     BOOST_REQUIRE_EQUAL( sample2_type::static_sizes[0], 5u );
@@ -186,6 +217,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
     BOOST_REQUIRE( (is_same<T *, typename sample2_type::pointer>::value) );
     BOOST_REQUIRE( (is_same<T const *, typename
      sample2_type::const_pointer>::value) );
+    BOOST_REQUIRE( (is_same<T *, typename sample2_type::iterator>::value) );
+    BOOST_REQUIRE( (is_same<T const *, typename
+     sample2_type::const_iterator>::value) );
+    BOOST_REQUIRE( (is_convertible<typename sample_type::iterator, typename
+     sample2_type::const_iterator>::value) );
 
     BOOST_REQUIRE( sizeof(sample2_type) >= sample2_type::static_size *
      sizeof(T) );
@@ -256,6 +292,15 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
     BOOST_CHECK_EQUAL( t2.size(), 2u );
     BOOST_CHECK_EQUAL( 4u, t3.size() );
     BOOST_CHECK_EQUAL( t4.size(), 4u );
+
+    BOOST_CHECK_EQUAL( 2u, t1.max_size() );
+    BOOST_CHECK_EQUAL( t2.max_size(), 2u );
+    BOOST_CHECK_EQUAL( 4u, t3.max_size() );
+    BOOST_CHECK_EQUAL( t4.max_size(), 4u );
+    BOOST_CHECK( not t1.empty() );
+    BOOST_CHECK( not t2.empty() );
+    BOOST_CHECK( not t3.empty() );
+    BOOST_CHECK( not t4.empty() );
 
     // Try out the "operator ()" interface
     BOOST_CHECK_EQUAL( t1()[0], -23 );
@@ -462,4 +507,139 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_range_for, T, test_types )
     BOOST_CHECK_EQUAL( t4.end() - t4.begin(), 6 );
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_const_iteration, T, test_types )
+{
+    using boost::container::array_md;
+    using std::is_same;
+
+    // If this happened, then "T *" and "T const *" would be the same.
+    BOOST_REQUIRE( not std::is_const<T>::value );
+
+    // Singular array
+    array_md<T>          t1{ 23 };
+    array_md<T> const &  t2 = t1;
+
+    BOOST_CHECK( not (is_same<decltype( t1.begin() ), decltype( t1.cbegin()
+     )>::value) );
+    BOOST_CHECK( (is_same<decltype( t2.begin() ), decltype( t2.cbegin()
+     )>::value) );
+    BOOST_CHECK( (is_same<decltype( t1.cbegin() ), decltype( t2.cbegin()
+     )>::value) );
+
+    BOOST_CHECK( not (is_same<decltype( t1.end() ), decltype( t1.cend()
+     )>::value) );
+    BOOST_CHECK((is_same<decltype( t2.end() ), decltype( t2.cend() )>::value));
+    BOOST_CHECK((is_same<decltype( t1.cend() ), decltype( t2.cend() )>::value));
+
+    BOOST_CHECK_EQUAL( t1.begin(), t1.cbegin() );
+    BOOST_CHECK_EQUAL( t2.begin(), t2.cbegin() );
+    BOOST_CHECK_EQUAL( t1.end(), t1.cend() );
+    BOOST_CHECK_EQUAL( t2.end(), t2.cend() );
+
+    BOOST_CHECK_EQUAL( *t1.begin(), (T)23 );
+    BOOST_CHECK_EQUAL( *t2.begin(), (T)23 );
+    BOOST_CHECK_EQUAL( *t1.cbegin(), (T)23 );
+    BOOST_CHECK_EQUAL( *t2.cbegin(), (T)23 );
+
+    BOOST_CHECK_EQUAL( t1.cend() - t1.cbegin(), 1 );
+    BOOST_CHECK_EQUAL( t2.cend() - t2.cbegin(), 1 );
+
+    // Compound array
+    array_md<T, 2, 3>          t3{ {{ 2, 3, 5 }, { 7, 11, 13 }} };
+    array_md<T, 2, 3> const &  t4 = t3;
+
+    BOOST_CHECK( not (is_same<decltype( t3.begin() ), decltype( t3.cbegin()
+     )>::value) );
+    BOOST_CHECK( (is_same<decltype( t4.begin() ), decltype( t4.cbegin()
+     )>::value) );
+    BOOST_CHECK( (is_same<decltype( t3.cbegin() ), decltype( t4.cbegin()
+     )>::value) );
+
+    BOOST_CHECK( not (is_same<decltype( t3.end() ), decltype( t3.cend()
+     )>::value) );
+    BOOST_CHECK((is_same<decltype( t4.end() ), decltype( t4.cend() )>::value));
+    BOOST_CHECK((is_same<decltype( t3.cend() ), decltype( t4.cend() )>::value));
+
+    BOOST_CHECK_EQUAL( t3.begin(), t3.cbegin() );
+    BOOST_CHECK_EQUAL( t4.begin(), t4.cbegin() );
+    BOOST_CHECK_EQUAL( t3.end(), t3.cend() );
+    BOOST_CHECK_EQUAL( t4.end(), t4.cend() );
+
+    BOOST_CHECK_EQUAL( *t3.begin(), (T)2 );
+    BOOST_CHECK_EQUAL( *t4.begin(), (T)2 );
+    BOOST_CHECK_EQUAL( *t3.cbegin(), (T)2 );
+    BOOST_CHECK_EQUAL( *t4.cbegin(), (T)2 );
+
+    BOOST_CHECK_EQUAL( t3.cend() - t3.cbegin(), 6 );
+    BOOST_CHECK_EQUAL( t4.cend() - t4.cbegin(), 6 );
+}
+
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_iteration
+
+
+// Unit tests for other operations  ------------------------------------------//
+
+BOOST_AUTO_TEST_SUITE( test_array_md_operations )
+
+BOOST_AUTO_TEST_CASE( test_equality )
+{
+    using boost::container::array_md;
+
+    // Singular array
+    array_md<int>  t1{ 3 }, t2{ 4 };
+    array_md<long>  t3{ 5L }, t4{ 3L };
+
+    BOOST_CHECK( t1 == t1 );
+    BOOST_CHECK( t1 != t2 );
+    BOOST_CHECK( t3 != t4 );
+    BOOST_CHECK( t1 == t4 );
+    BOOST_CHECK( t2 != t3 );
+
+    // Compound array
+    array_md<int, 2, 3>   t5{ {{ 2, 3, 5 }, { 7, 11, 13 }} }, t6 = t5;
+    array_md<long, 2, 3>  t7{ {{ 2L, 3L, 5L }, { 7L, 11L, 13L }} };
+
+    BOOST_CHECK( t5 == t6 );
+    BOOST_CHECK( t6 == t7 );
+    t6( 0, 2 )++;
+    BOOST_CHECK( t5 != t6 );
+    BOOST_CHECK( t6 != t7 );
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_swap, T, test_types )
+{
+    using boost::container::array_md;
+
+    // Singular array
+    array_md<T> const  t1{ 23 }, t2{ 101 };
+    array_md<T>        t3 = t1, t4 = t2;
+
+    BOOST_CHECK( t1 == t3 );
+    BOOST_CHECK( t2 == t4 );
+    BOOST_CHECK( t1 != t4 );
+    BOOST_CHECK( t2 != t3 );
+
+    swap( t3, t4 );
+    BOOST_CHECK( t3 == t2 );
+    BOOST_CHECK( t4 == t1 );
+    BOOST_CHECK( t4 != t2 );
+    BOOST_CHECK( t3 != t1 );
+
+    // Compound array
+    array_md<T, 2, 3> const  t5{ {{ 2, 3, 5 }, { 7, 11, 13 }} },
+     t6{ {{ 1, 4, 9 }, { 16, 25, 36 }} };
+    array_md<T, 2, 3>        t7 = t5, t8 = t6;
+
+    BOOST_CHECK( t5 == t7 );
+    BOOST_CHECK( t6 == t8 );
+    BOOST_CHECK( t5 != t8 );
+    BOOST_CHECK( t6 != t7 );
+
+    swap( t7, t8 );
+    BOOST_CHECK( t7 == t6 );
+    BOOST_CHECK( t8 == t5 );
+    BOOST_CHECK( t8 != t6 );
+    BOOST_CHECK( t7 != t5 );
+}
+
+BOOST_AUTO_TEST_SUITE_END()  // test_array_md_operations

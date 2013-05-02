@@ -28,9 +28,11 @@
 #ifndef BOOST_CONTAINER_ARRAY_MD_HPP
 #define BOOST_CONTAINER_ARRAY_MD_HPP
 
+#include <algorithm>
 #include <cstddef>
 #include <initializer_list>
 #include <stdexcept>
+#include <utility>
 
 #include "boost/type_traits/indexing.hpp"
 #include "boost/utility/slice.hpp"
@@ -74,6 +76,25 @@ template < typename ElementType, std::size_t ...Extents >
 struct array_md;
 
 
+//  Implementation details  --------------------------------------------------//
+
+//! \cond
+namespace detail
+{
+    //! Detect if a type's swap (found via ADL for non-built-ins) throws.
+    template < typename T >
+    inline constexpr
+    bool  is_swap_nothrow() noexcept
+    {
+        using std::swap;
+
+        return noexcept( swap(std::declval<T&>(), std::declval<T&>()) );
+    }
+
+}  // namespace detail
+//! \endcond
+
+
 //  Multi-dimensional array class template specialization declarations  ------//
 
 /** \brief  Base-case specialization of `array_md`.
@@ -103,6 +124,14 @@ struct array_md<T>
     //! The type for referring to an element, immutable access.
     typedef value_type const &  const_reference;
 
+    // Other types needed for the Container interface
+    //! The type for spacing between element positions.
+    typedef std::ptrdiff_t  difference_type;
+    //! The type for referring to an element's position.
+    typedef pointer                iterator;
+    //! The type for referring to an element's position, immutable access.
+    typedef const_pointer    const_iterator;
+
     // Sizing parameters
     //! The number of array extents supplied as dimensions.
     static constexpr  size_type  dimensionality = 0u;
@@ -118,7 +147,26 @@ struct array_md<T>
         \returns  The number of stored elements (of #value_type).
      */
     constexpr
-    auto  size() const noexcept -> size_type  { return static_size; }
+    auto      size() const noexcept -> size_type  { return static_size; }
+    /** \brief  Returns maximum possible element count.
+
+    Since this type has a fixed number of elements, this function's
+    implementation can be trivial and `constexpr`.
+
+        \returns  The largest number of stored elements (of #value_type) that
+                  this object can support.
+     */
+    constexpr
+    auto  max_size() const noexcept -> size_type  { return size(); }
+    /** \brief  Returns if there aren't any elements.
+
+    Since this type has a fixed number of elements, this function's
+    implementation can be trivial and `constexpr`.
+
+        \returns  `size() == 0`.
+     */
+    constexpr
+    bool  empty() const noexcept  { return false; }
 
     // Element access
     /** \brief  Returns underlying access.
@@ -217,7 +265,7 @@ struct array_md<T>
         return data_block;
     }
 
-    // Range-for support
+    // Iteration (and range-for) support
     /** \brief  Forward iteration, start point
 
     Generates a start point for iterating over this object's element data in a
@@ -228,10 +276,10 @@ struct array_md<T>
 
         \returns  An iterator pointing to the sole element.
      */
-    auto  begin()       noexcept ->       pointer  { return data(); }
+    auto  begin()       noexcept ->       iterator  { return data(); }
     //! \overload
     constexpr
-    auto  begin() const noexcept -> const_pointer  { return data(); }
+    auto  begin() const noexcept -> const_iterator  { return data(); }
     /** \brief  Forward iteration, end point
 
     Generates an end point for iterating over this object's element data in a
@@ -242,10 +290,52 @@ struct array_md<T>
 
         \returns  An iterator pointing to one past the sole element.
      */
-    auto    end()       noexcept ->       pointer  { return data() + size(); }
+    auto    end()       noexcept ->       iterator  { return data() + size(); }
     //! \overload
     constexpr
-    auto    end() const noexcept -> const_pointer  { return data() + size(); }
+    auto    end() const noexcept -> const_iterator  { return data() + size(); }
+
+    /** \brief  Forward iteration, start point, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via iterator) without `const_cast` convolutions with #begin.
+
+        \throws  Nothing.
+
+        \returns  An iterator pointing to the sole element.
+     */
+    constexpr
+    auto  cbegin() const noexcept -> const_iterator  { return begin(); }
+    /** \brief  Forward iteration, end point, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via iterator) without `const_cast` convolutions with #end.
+
+        \throws  Nothing.
+
+        \returns  An iterator pointing to one past the sole element.
+     */
+    constexpr
+    auto    cend() const noexcept -> const_iterator  { return end(); }
+
+    // Other operations
+    /** \brief  Swaps states with another object.
+
+    The swapping should use the element-type's `swap`, found via ADL.
+
+        \param other  The object to trade state with.
+
+        \throws  Whatever  the element-level swap throws.
+        \post  `*this` is equivalent to the old state of *other*, while that
+               object is equivalent to the old state of `*this`.
+     */
+    void  swap( array_md &other )
+     noexcept( detail::is_swap_nothrow<value_type>() )
+    {
+        using std::swap;
+
+        swap( data_block, other.data_block );
+    }
 
     // Member data
     //! The element, public to support aggregate initialization.
@@ -287,6 +377,14 @@ struct array_md<T, M, N...>
     //! The type for referring to an element, immutable access.
     typedef value_type const &  const_reference;
 
+    // Other types needed for the Container interface
+    //! The type for spacing between element positions.
+    typedef std::ptrdiff_t  difference_type;
+    //! The type for referring to an element's position.
+    typedef pointer                iterator;
+    //! The type for referring to an element's position, immutable access.
+    typedef const_pointer    const_iterator;
+
     // Sizing parameters
     //! The number of extents supplied as template parameters.
     static constexpr  size_type  dimensionality = 1u + sizeof...( N );
@@ -305,7 +403,26 @@ struct array_md<T, M, N...>
         \returns  The number of stored elements (of #value_type).
      */
     constexpr
-    auto  size() const noexcept -> size_type  { return static_size; }
+    auto      size() const noexcept -> size_type  { return static_size; }
+    /** \brief  Returns maximum possible element count.
+
+    Since this type has a fixed number of elements, this function's
+    implementation can be trivial and `constexpr`.
+
+        \returns  The largest number of stored elements (of #value_type) that
+                  this object can support.
+     */
+    constexpr
+    auto  max_size() const noexcept -> size_type  { return size(); }
+    /** \brief  Returns if there are no elements.
+
+    Since this type has a fixed number of elements, this function's
+    implementation can be trivial and `constexpr`.
+
+        \returns  `size() == 0`.
+     */
+    constexpr
+    bool  empty() const noexcept  { return false; }
 
     // Element (or sub-array) access
     /** \brief  Returns underlying access.
@@ -494,6 +611,7 @@ struct array_md<T, M, N...>
      */
     auto  at( std::initializer_list<size_type> i ) -> reference
     {
+        // Keep the mutable and const versions in sync
         return const_cast<reference>( (this->*static_cast<auto
          (array_md::*)(std::initializer_list<size_type>) const ->
          const_reference>( &array_md::at ))(i) );
@@ -554,7 +672,7 @@ struct array_md<T, M, N...>
          data_block, static_cast<Indices &&>( i )...);
     }
 
-    // Range-for support
+    // Iteration (and range-for) support
     /** \brief  Forward iteration, start point
 
     Generates a start point for iterating over this object's element data in a
@@ -571,10 +689,10 @@ struct array_md<T, M, N...>
         \returns  An iterator pointing to the first element.  (At address
                   `&((*this)[0]...[0])`)
      */
-    auto  begin()       noexcept ->       pointer  { return data(); }
+    auto  begin()       noexcept ->       iterator  { return data(); }
     //! \overload
     constexpr
-    auto  begin() const noexcept -> const_pointer  { return data(); }
+    auto  begin() const noexcept -> const_iterator  { return data(); }
     /** \brief  Forward iteration, end point
 
     Generates an end point for iterating over this object's element data in a
@@ -585,10 +703,53 @@ struct array_md<T, M, N...>
         \returns  An iterator pointing to one past the last element.  (At
                   address `&((*this)[static_sizes[0]][0]...[0])`)
      */
-    auto    end()       noexcept ->       pointer  { return data() + size(); }
+    auto    end()       noexcept ->       iterator  { return data() + size(); }
     //! \overload
     constexpr
-    auto    end() const noexcept -> const_pointer  { return data() + size(); }
+    auto    end() const noexcept -> const_iterator  { return data() + size(); }
+
+    /** \brief  Forward iteration, start point, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via iterator) without `const_cast` convolutions with #begin.
+
+        \throws  Nothing.
+
+        \returns  An iterator pointing to the first element.
+     */
+    constexpr
+    auto  cbegin() const noexcept -> const_iterator  { return begin(); }
+    /** \brief  Forward iteration, end point, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via iterator) without `const_cast` convolutions with #end.
+
+        \throws  Nothing.
+
+        \returns  An iterator pointing to one past the last element.
+     */
+    constexpr
+    auto    cend() const noexcept -> const_iterator  { return end(); }
+
+    // Other operations
+    /** \brief  Swaps states with another object.
+
+    The swapping should use the element-type's `swap`, found via ADL.
+
+        \param other  The object to trade state with.
+
+        \throws  Whatever  the element-level swap throws.
+        \post  `*this` is equivalent to the old state of *other*, while that
+               object is equivalent to the old state of `*this`.
+     */
+    void  swap( array_md &other )
+     noexcept( detail::is_swap_nothrow<value_type>() )
+    {
+        // Built-in arrays get their swap from the standard namespace.  It'll
+        // (eventually) call the ADL swap from the outermost contained non-array
+        // type.
+        std::swap( data_block, other.data_block );
+    }
 
     // Member data
     //! The element(s), public to support aggregate initialization.
@@ -631,6 +792,82 @@ typename array_md<T, M, N...>::size_type  array_md<T, M, N...>::static_sizes[ 1u
 template < typename T, std::size_t M, std::size_t ...N >
 constexpr
 typename array_md<T, M, N...>::size_type  array_md<T, M, N...>::static_size;
+
+
+//  Multi-dimensional array class template, operator definitions  ------------//
+
+/** \brief  Equality comparison for `array_md`.
+
+Compares two `array_md` objects, with the same size (same number of dimensions
+and the corresponding dimensions have to be equal), for equality.  Note that it
+usually won't work with built-in arrays as the element types, since they don't
+support `operator ==`.
+
+    \pre  `std::declval<T>() == std::declval<U>()` is well-formed.
+
+    \param l  The left-side argument.
+    \param r  The right-side argument.
+
+    \retval true   If every element in *l* is equal to its corresponding element
+                   in *r*.
+    \retval false  Otherwise.
+ */
+template < typename T, typename U, std::size_t ...N >
+inline
+bool  operator ==( array_md<T, N...> const &l, array_md<U, N...> const &r )
+{ return std::equal(l.begin(), l.end(), r.begin()); }
+
+/** \brief  Inequality comparison for `array_md`.
+
+Compares two `array_md` objects, with the same size (same number of dimensions
+and the corresponding dimensions have to be equal), for inequality.  Note that
+it usually won't work with built-in arrays as the element types, since they
+don't support `operator ==`.
+
+    \pre  `std::declval<T>() == std::declval<U>()` is well-formed.
+
+    \param l  The left-side argument.
+    \param r  The right-side argument.
+
+    \see  #operator==(array_md<T,U,N...>const&,array_md<T,U,N...>const&)
+
+    \retval true   If any element in *l* doesn't equal its corresponding element
+                   in *r*.
+    \retval false  Otherwise.
+ */
+template < typename T, typename U, std::size_t ...N >
+inline
+bool  operator !=( array_md<T, N...> const &l, array_md<U, N...> const &r )
+{ return !(l == r); }
+
+
+//  Multi-dimensional array class template, other operations  ----------------//
+
+/** \brief  Swap routine for `array_md`.
+
+Exchanges the state of two `array_md` objects.  The objects have to have the
+same element type and number of dimensions, and the corresponding dimensions
+have to be equal.
+
+    \pre  There is a swapping routine, called `swap`, either in namespace `std`
+          for built-ins, or found via ADL for other types.
+
+    \param a  The first object to have its state exchanged.
+    \param b  The second object to have its state exchanged.
+
+    \see  #array_md<T>::swap(array_md<T>&)
+    \see  #array_md<T,M,N...>::swap(array_md<T,M,N...>&)
+
+    \throws Whatever  the element-level swap does.
+
+    \post  `a` is equivalent to the old state of `b`, while `b` is equivalent to
+           the old state of `a`.
+ */
+template < typename T, std::size_t ...N >
+inline
+void  swap( array_md<T, N...> &a, array_md<T, N...> &b )
+ noexcept( noexcept(a.swap( b )) )
+{ a.swap(b); }
 
 
 }  // namespace container
