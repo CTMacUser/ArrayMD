@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <initializer_list>
+#include <iterator>
 #include <stdexcept>
 #include <utility>
 
@@ -60,9 +61,10 @@ be used.  Objects support default-, copy-, and move-construction if the
 element type does.  The same applies to copy- and move-assignment and
 destruction.
 
-Since a multi-dimensional array is not a linear structure, most linear-based
-access is not provided.  The exception is `begin`/`end`, to support the
-range-`for` statement.
+Since a multi-dimensional array is not a linear structure, linear-based access
+should be avoided.  However, much of the traditional linear-aligned standard
+container interface is provided, to support range-`for` and many standard and
+standard-inspired algorithms.
 
     \pre  If any extents are given, they all must be greater than zero.
 
@@ -131,6 +133,12 @@ struct array_md<T>
     typedef pointer                iterator;
     //! The type for referring to an element's position, immutable access.
     typedef const_pointer    const_iterator;
+
+    // Types needed for the ReversibleContainer interface
+    //! The type for traversing element-positions backwards.
+    typedef std::reverse_iterator<iterator>              reverse_iterator;
+    //! The type for traversing element-positions backwards, immutable access.
+    typedef std::reverse_iterator<const_iterator>  const_reverse_iterator;
 
     // Sizing parameters
     //! The number of array extents supplied as dimensions.
@@ -318,6 +326,52 @@ struct array_md<T>
     constexpr
     auto    cend() const noexcept -> const_iterator  { return end(); }
 
+    /** \brief  Reverse iteration, start point
+
+    Generates a start point for iterating over this object's element data in a
+    backward direction.  Since the data is a single object, the iterator just
+    points to that sole object.
+
+        \returns  An iterator pointing to the sole element.
+     */
+    auto  rbegin()       ->       reverse_iterator
+    { return reverse_iterator(end()); }
+    //! \overload
+    auto  rbegin() const -> const_reverse_iterator
+    { return const_reverse_iterator(end()); }
+    /** \brief  Reverse iteration, end point
+
+    Generates an end point for iterating over this object's element data in a
+    backward direction.  Since the data is a single object, the iterator points
+    just past that sole object.
+
+        \returns  An iterator pointing to one before the sole element.
+     */
+    auto    rend()       ->       reverse_iterator
+    { return reverse_iterator(begin()); }
+    //! \overload
+    auto    rend() const -> const_reverse_iterator
+    { return const_reverse_iterator(begin()); }
+
+    /** \brief  Reverse iteration, start point, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via iterator) without `const_cast` convolutions with #rbegin.
+
+        \returns  An iterator pointing to the sole element.
+     */
+    auto  crbegin() const -> const_reverse_iterator
+    { return const_reverse_iterator(cend()); }
+    /** \brief  Reverse iteration, end point, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via iterator) without `const_cast` convolutions with #rend.
+
+        \returns  An iterator pointing to one before the sole element.
+     */
+    auto    crend() const -> const_reverse_iterator
+    { return const_reverse_iterator(cbegin()); }
+
     // Other operations
     /** \brief  Swaps states with another object.
 
@@ -384,6 +438,12 @@ struct array_md<T, M, N...>
     typedef pointer                iterator;
     //! The type for referring to an element's position, immutable access.
     typedef const_pointer    const_iterator;
+
+    // Types needed for the ReversibleContainer interface
+    //! The type for traversing element-positions backwards.
+    typedef std::reverse_iterator<iterator>              reverse_iterator;
+    //! The type for traversing element-positions backwards, immutable access.
+    typedef std::reverse_iterator<const_iterator>  const_reverse_iterator;
 
     // Sizing parameters
     //! The number of extents supplied as template parameters.
@@ -730,6 +790,58 @@ struct array_md<T, M, N...>
      */
     constexpr
     auto    cend() const noexcept -> const_iterator  { return end(); }
+
+    /** \brief  Reverse iteration, start point
+
+    Generates a start point for iterating over this object's element data in a
+    backward direction.  Progression through the elements is the reverse given
+    by #begin and #end member functions.  The traversal order of
+    index-coordinates is invariant for a given value of #static_sizes, so
+    multiple traversals of the same object gives a stable experience.  And
+    iterating over several `array_md` objects in parallel, with the same
+    #static_sizes, starting point, and in-sync traversal amounts, will keep the
+    visited index-coordinates in sync.
+
+        \returns  An iterator pointing to the last element.  (At address
+     `&((*this)[static_sizes[0] - 1]...[static_sizes[dimensionality - 1] - 1])`)
+     */
+    auto  rbegin()       ->       reverse_iterator
+    { return reverse_iterator(end()); }
+    //! \overload
+    auto  rbegin() const -> const_reverse_iterator
+    { return const_reverse_iterator(end()); }
+    /** \brief  Reverse iteration, end point
+
+    Generates an end point for iterating over this object's element data in a
+    backward direction.
+
+        \returns  An iterator pointing to one before the first element.  (At
+                  address `&((*this)[0]...[0][-1])`)
+     */
+    auto    rend()       ->       reverse_iterator
+    { return reverse_iterator(begin()); }
+    //! \overload
+    auto    rend() const -> const_reverse_iterator
+    { return const_reverse_iterator(begin()); }
+
+    /** \brief  Reverse iteration, start point, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via iterator) without `const_cast` convolutions with #rbegin.
+
+        \returns  An iterator pointing to the last element.
+     */
+    auto  crbegin() const -> const_reverse_iterator
+    { return const_reverse_iterator(cend()); }
+    /** \brief  Reverse iteration, end point, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via iterator) without `const_cast` convolutions with #rend.
+
+        \returns  An iterator pointing to one before the first element.
+     */
+    auto    crend() const -> const_reverse_iterator
+    { return const_reverse_iterator(cbegin()); }
 
     // Other operations
     /** \brief  Swaps states with another object.

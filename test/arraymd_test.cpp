@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <stdexcept>
 #include <type_traits>
 
@@ -24,9 +25,18 @@
 
 namespace {
 
+// Sample testing types for elements
 typedef boost::mpl::list<int, long, unsigned char>  test_types;
 
 }
+
+// Flag un-printable types
+BOOST_TEST_DONT_PRINT_LOG_VALUE( std::reverse_iterator<int *> );
+BOOST_TEST_DONT_PRINT_LOG_VALUE( std::reverse_iterator<int const *> );
+BOOST_TEST_DONT_PRINT_LOG_VALUE( std::reverse_iterator<long *> );
+BOOST_TEST_DONT_PRINT_LOG_VALUE( std::reverse_iterator<long const *> );
+BOOST_TEST_DONT_PRINT_LOG_VALUE( std::reverse_iterator<unsigned char *> );
+BOOST_TEST_DONT_PRINT_LOG_VALUE( std::reverse_iterator<unsigned char const *> );
 
 
 // Unit tests for basic functionality  ---------------------------------------//
@@ -36,6 +46,7 @@ BOOST_AUTO_TEST_SUITE( test_array_md_basics )
 BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_static, T, test_types )
 {
     using std::is_same;
+    using std::reverse_iterator;
 
     typedef boost::container::array_md<T>  sample_type;
 
@@ -60,6 +71,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_singular_element_static, T, test_types )
      sample_type::const_iterator>::value) );
     BOOST_REQUIRE( (std::is_convertible<typename sample_type::iterator, typename
      sample_type::const_iterator>::value) );
+    BOOST_REQUIRE( (is_same<reverse_iterator<T *>, typename
+     sample_type::reverse_iterator>::value) );
+    BOOST_REQUIRE( (is_same<reverse_iterator<T const *>, typename
+     sample_type::const_reverse_iterator>::value) );
 
     BOOST_REQUIRE( sizeof( sample_type ) >= sizeof( T ) );
     BOOST_REQUIRE_EQUAL( sizeof(typename sample_type::data_type), sizeof(T) );
@@ -165,6 +180,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
     using std::size_t;
     using std::ptrdiff_t;
     using std::is_convertible;
+    using std::reverse_iterator;
 
     typedef array_md<T, 7, 3>  sample_type;
 
@@ -193,6 +209,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
      sample_type::const_iterator>::value) );
     BOOST_REQUIRE( (is_convertible<typename sample_type::iterator, typename
      sample_type::const_iterator>::value) );
+    BOOST_REQUIRE( (is_same<reverse_iterator<T *>, typename
+     sample_type::reverse_iterator>::value) );
+    BOOST_REQUIRE( (is_same<reverse_iterator<T const *>, typename
+     sample_type::const_reverse_iterator>::value) );
 
     BOOST_REQUIRE( sizeof(sample_type) >= sample_type::static_size *
      sizeof(T) );
@@ -222,6 +242,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_compound_static, T, test_types )
      sample2_type::const_iterator>::value) );
     BOOST_REQUIRE( (is_convertible<typename sample_type::iterator, typename
      sample2_type::const_iterator>::value) );
+    BOOST_REQUIRE( (is_same<reverse_iterator<T *>, typename
+     sample2_type::reverse_iterator>::value) );
+    BOOST_REQUIRE( (is_same<reverse_iterator<T const *>, typename
+     sample2_type::const_reverse_iterator>::value) );
 
     BOOST_REQUIRE( sizeof(sample2_type) >= sample2_type::static_size *
      sizeof(T) );
@@ -572,6 +596,101 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_const_iteration, T, test_types )
 
     BOOST_CHECK_EQUAL( t3.cend() - t3.cbegin(), 6 );
     BOOST_CHECK_EQUAL( t4.cend() - t4.cbegin(), 6 );
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_reverse_iteration, T, test_types )
+{
+    using boost::container::array_md;
+    using std::is_same;
+
+    // If this happened, then "T *" and "T const *" would be the same.
+    BOOST_REQUIRE( not std::is_const<T>::value );
+
+    // Singular array
+    array_md<T>          t1{ 23 };
+    array_md<T> const &  t2 = t1;
+
+    BOOST_CHECK( not (is_same<decltype( t1.rbegin() ), decltype( t1.crbegin()
+     )>::value) );
+    BOOST_CHECK( (is_same<decltype( t2.rbegin() ), decltype( t2.crbegin()
+     )>::value) );
+    BOOST_CHECK( (is_same<decltype( t1.crbegin() ), decltype( t2.crbegin()
+     )>::value) );
+
+    BOOST_CHECK( not (is_same<decltype( t1.rend() ), decltype( t1.crend()
+     )>::value) );
+    BOOST_CHECK((is_same<decltype( t2.rend() ), decltype( t2.crend()
+     )>::value));
+    BOOST_CHECK((is_same<decltype( t1.crend() ), decltype( t2.crend()
+     )>::value));
+
+    BOOST_CHECK_EQUAL( t1.rbegin(), t1.crbegin() );
+    BOOST_CHECK_EQUAL( t2.rbegin(), t2.crbegin() );
+    BOOST_CHECK_EQUAL( t1.rend(), t1.crend() );
+    BOOST_CHECK_EQUAL( t2.rend(), t2.crend() );
+
+    BOOST_CHECK_EQUAL( *t1.rbegin(), (T)23 );
+    BOOST_CHECK_EQUAL( *t2.rbegin(), (T)23 );
+    BOOST_CHECK_EQUAL( *t1.crbegin(), (T)23 );
+    BOOST_CHECK_EQUAL( *t2.crbegin(), (T)23 );
+
+    BOOST_CHECK_EQUAL( t1.rend() - t1.rbegin(), 1 );
+    BOOST_CHECK_EQUAL( t2.rend() - t2.rbegin(), 1 );
+    BOOST_CHECK_EQUAL( t1.crend() - t1.crbegin(), 1 );
+    BOOST_CHECK_EQUAL( t2.crend() - t2.crbegin(), 1 );
+
+    *t1.rbegin() = static_cast<T>( 29 );
+    BOOST_CHECK_EQUAL( *t1.rbegin(), (T)29 );
+    BOOST_CHECK_EQUAL( *t2.rbegin(), (T)29 );
+    BOOST_CHECK_EQUAL( *t1.crbegin(), (T)29 );
+    BOOST_CHECK_EQUAL( *t2.crbegin(), (T)29 );
+
+    // Compound array
+    array_md<T, 2, 3>          t3{ {{ 2, 3, 5 }, { 7, 11, 13 }} };
+    array_md<T, 2, 3> const &  t4 = t3;
+    T const                    results1[] = { 13, 11, 7, 5, 3, 2 }, results2[]
+     = { 13, 24, 31, 36, 39, 41 };
+    auto const                 result_length = sizeof( results1 ) / sizeof(
+     results1[0] );
+
+    BOOST_CHECK( not (is_same<decltype( t3.rbegin() ), decltype( t3.crbegin()
+     )>::value) );
+    BOOST_CHECK( (is_same<decltype( t4.rbegin() ), decltype( t4.crbegin()
+     )>::value) );
+    BOOST_CHECK( (is_same<decltype( t3.crbegin() ), decltype( t4.crbegin()
+     )>::value) );
+
+    BOOST_CHECK( not (is_same<decltype( t3.rend() ), decltype( t3.crend()
+     )>::value) );
+    BOOST_CHECK((is_same<decltype( t4.rend() ), decltype( t4.crend() )>::value));
+    BOOST_CHECK((is_same<decltype( t3.crend() ), decltype( t4.crend() )>::value));
+
+    BOOST_CHECK_EQUAL( t3.rbegin(), t3.crbegin() );
+    BOOST_CHECK_EQUAL( t4.rbegin(), t4.crbegin() );
+    BOOST_CHECK_EQUAL( t3.rend(), t3.crend() );
+    BOOST_CHECK_EQUAL( t4.rend(), t4.crend() );
+
+    BOOST_CHECK_EQUAL( *t3.rbegin(), (T)13 );
+    BOOST_CHECK_EQUAL( *t4.rbegin(), (T)13 );
+    BOOST_CHECK_EQUAL( *t3.crbegin(), (T)13 );
+    BOOST_CHECK_EQUAL( *t4.crbegin(), (T)13 );
+
+    BOOST_CHECK_EQUAL( t3.crend() - t3.crbegin(), 6 );
+    BOOST_CHECK_EQUAL( t4.crend() - t4.crbegin(), 6 );
+
+    BOOST_CHECK_EQUAL_COLLECTIONS( t3.rbegin(), t3.rend(), results1, results1 +
+     result_length );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t4.rbegin(), t4.rend(), results1, results1 +
+     result_length );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t3.crbegin(), t3.crend(), results1, results1
+     + result_length );
+
+    for ( auto  i = t3.rbegin() + 1 ; t3.rend() != i ; ++i )
+        *i += *( i - 1 );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t4.rbegin(), t4.rend(), results2, results2 +
+     result_length );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t3.crbegin(), t3.crend(), results2, results2
+     + result_length );
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_iteration
