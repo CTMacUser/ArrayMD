@@ -700,6 +700,101 @@ BOOST_AUTO_TEST_SUITE_END()  // test_array_md_iteration
 
 BOOST_AUTO_TEST_SUITE( test_array_md_operations )
 
+BOOST_AUTO_TEST_CASE( test_front_back )
+{
+    using boost::container::array_md;
+
+    // Singular array
+    array_md<int>        t1{ 2 }, t2{ 3 };
+    array_md<int> const  &t3 = t1, &t4 = t2;
+
+    BOOST_CHECK_EQUAL( t1.back(), 2 );
+    BOOST_CHECK_EQUAL( t2.front(), 3 );
+
+    t1.front() = 5;
+    t2.back() = 7;
+    BOOST_CHECK_EQUAL( t3.back(), 5 );
+    BOOST_CHECK_EQUAL( t4.front(), 7 );
+
+    BOOST_CHECK_EQUAL( &t3.front(), t3.data() );
+    BOOST_CHECK_EQUAL( &t4.back(), t4.data() );
+    BOOST_CHECK_EQUAL( &t1.front(), &t1.back() );
+    BOOST_CHECK_EQUAL( &t2.front(), &t2.back() );
+
+    // Compound array
+    array_md<int, 2, 3>        t5{ {{ 2, 3, 5 }, { 7, 11, 13 }} },
+     t6{ {{ 1, 4, 9 }, { 16, 25, 36 }} };
+    array_md<int, 2, 3> const  &t7 = t5, &t8 = t6;
+
+    BOOST_CHECK_EQUAL( t5.front(), 2 );
+    BOOST_CHECK_EQUAL( t5.back(), 13 );
+    BOOST_CHECK_EQUAL( t6.front(), 1 );
+    BOOST_CHECK_EQUAL( t6.back(), 36 );
+
+    t5.front() = -1002;
+    t5.back() = -1013;
+    t6.front() = -1001;
+    t6.back() = -1036;
+    BOOST_CHECK_EQUAL( t7.front(), -1002 );
+    BOOST_CHECK_EQUAL( t7.back(), -1013 );
+    BOOST_CHECK_EQUAL( t8.front(), -1001 );
+    BOOST_CHECK_EQUAL( t8.back(), -1036 );
+
+    BOOST_CHECK_EQUAL( &t5.front(), &*t5.begin() );
+    BOOST_CHECK_EQUAL( &t5.back(), &*t5.rbegin() );
+    BOOST_CHECK_NE( &t6.front(), &t6.back() );
+    BOOST_CHECK_EQUAL( &t7.front(), t7.data() );
+    BOOST_CHECK_EQUAL( &t8.back(), t8.data() + t8.size() - 1 );
+}
+
+BOOST_AUTO_TEST_CASE( test_fill )
+{
+    using boost::container::array_md;
+    using std::strcmp;
+
+    // Scalar element type
+    array_md<int>        t1{};
+    array_md<int, 2, 3>  t2{ {{ 2, 3, 5 }, { 7, 11, 13 }} };
+
+    BOOST_CHECK_EQUAL( t1(), 0 );
+    t1.fill( 4 );
+    BOOST_CHECK_EQUAL( t1(), 4 );
+
+    BOOST_CHECK_NE( t2(0, 0), -23 );
+    BOOST_CHECK_NE( t2(0, 1), -23 );
+    BOOST_CHECK_NE( t2(0, 2), -23 );
+    BOOST_CHECK_NE( t2(1, 0), -23 );
+    BOOST_CHECK_NE( t2(1, 1), -23 );
+    BOOST_CHECK_NE( t2(1, 2), -23 );
+    t2.fill( -23 );
+    BOOST_CHECK_EQUAL( t2(0, 0), -23 );
+    BOOST_CHECK_EQUAL( t2(0, 1), -23 );
+    BOOST_CHECK_EQUAL( t2(0, 2), -23 );
+    BOOST_CHECK_EQUAL( t2(1, 0), -23 );
+    BOOST_CHECK_EQUAL( t2(1, 1), -23 );
+    BOOST_CHECK_EQUAL( t2(1, 2), -23 );
+
+    // Array element type
+    array_md<char[6]>        t3{ "North" };
+    array_md<char[6], 2, 2>  t4{ {{ "Hello", "World" }, { "Video", "Watch" }} };
+    char const               r[] = "South";  // avoid array-to-pointer decay
+
+    BOOST_REQUIRE_EQUAL( sizeof(r), sizeof(t3()) );
+    BOOST_CHECK_NE( strcmp(t3(), r), 0 );
+    t3.fill( r );
+    BOOST_CHECK_EQUAL( strcmp(t3(), r), 0 );
+
+    BOOST_CHECK_NE( strcmp(t4( 0, 0 ), r), 0 );
+    BOOST_CHECK_NE( strcmp(t4( 0, 1 ), r), 0 );
+    BOOST_CHECK_NE( strcmp(t4( 1, 0 ), r), 0 );
+    BOOST_CHECK_NE( strcmp(t4( 1, 1 ), r), 0 );
+    t4.fill( r );
+    BOOST_CHECK_EQUAL( strcmp(t4( 0, 0 ), r), 0 );
+    BOOST_CHECK_EQUAL( strcmp(t4( 0, 1 ), r), 0 );
+    BOOST_CHECK_EQUAL( strcmp(t4( 1, 0 ), r), 0 );
+    BOOST_CHECK_EQUAL( strcmp(t4( 1, 1 ), r), 0 );
+}
+
 BOOST_AUTO_TEST_CASE( test_equality )
 {
     using boost::container::array_md;

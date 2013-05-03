@@ -33,6 +33,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 #include "boost/type_traits/indexing.hpp"
@@ -84,13 +85,30 @@ struct array_md;
 namespace detail
 {
     //! Detect if a type's swap (found via ADL for non-built-ins) throws.
-    template < typename T >
+    template < typename T, typename U = T >
     inline constexpr
     bool  is_swap_nothrow() noexcept
     {
         using std::swap;
 
-        return noexcept( swap(std::declval<T&>(), std::declval<T&>()) );
+        return noexcept( swap(std::declval<T &>(), std::declval<U &>()) );
+    }
+
+    //! Assign second object to first
+    template < typename T, typename U >
+    inline
+    void  deep_assign( T &t, U const &u )
+     noexcept( std::is_nothrow_assignable<T &, U const &>::value )
+    { t = u; }
+
+    //! Assign second object to first, when both are arrays!
+    template < typename T, typename U, std::size_t N >
+    inline
+    void  deep_assign( T (&t)[N], U const (&u)[N] )
+     noexcept( noexcept(deep_assign( t[0], u[0] )) )
+    {
+        for ( std::size_t  i = 0u ; i < N ; ++i )
+            deep_assign( t[i], u[i] );
     }
 
 }  // namespace detail
@@ -273,6 +291,31 @@ struct array_md<T>
         return data_block;
     }
 
+    /** \brief  Access to first element.
+
+    Since there's exactly one element, it's always the front and easy to find.
+
+        \throws  Nothing.
+
+        \returns  `*begin()`
+     */
+    auto  front()       noexcept ->       reference  { return data_block; }
+    //! \overload
+    constexpr
+    auto  front() const noexcept -> const_reference  { return data_block; }
+    /** \brief  Access to last element.
+
+    Since there's exactly one element, it's always the back and easy to find.
+
+        \throws  Nothing.
+
+        \returns  `*rbegin()`
+     */
+    auto   back()       noexcept ->       reference  { return data_block; }
+    //! \overload
+    constexpr
+    auto   back() const noexcept -> const_reference  { return data_block; }
+
     // Iteration (and range-for) support
     /** \brief  Forward iteration, start point
 
@@ -373,6 +416,26 @@ struct array_md<T>
     { return const_reverse_iterator(cbegin()); }
 
     // Other operations
+    /** \brief  Fill element with specified value.
+
+    Assigns the given value to the sole element.
+
+        \pre  #value_type has to be Assignable.  There is special compensation
+              for built-in arrays, which are not Assignable.  The code will
+              assign them inner-element-wise instead.  In that case, the inner
+              non-array type has to be Assignable.
+
+        \param v  The value of the assignment source.
+
+        \throws  Whatever  assignment for
+                 `std::remove_all_extents<value_type>::type` throws.
+
+        \post  The sole element is equivalent to *v*.
+     */
+    void  fill( value_type const &v )
+     noexcept( noexcept(detail::deep_assign( (value_type &)v, v )) )
+    { detail::deep_assign(data_block, v); }
+
     /** \brief  Swaps states with another object.
 
     The swapping should use the element-type's `swap`, found via ADL.
@@ -732,6 +795,33 @@ struct array_md<T, M, N...>
          data_block, static_cast<Indices &&>( i )...);
     }
 
+    /** \brief  Access to first element.
+
+    The first/front element is determined by iteration order, so it's at
+    `(*this)[0]...[0]`.
+
+        \throws  Nothing.
+
+        \returns  `*begin()`
+     */
+    auto  front()       noexcept ->       reference  { return *begin(); }
+    //! \overload
+    constexpr
+    auto  front() const noexcept -> const_reference  { return *begin(); }
+    /** \brief  Access to last element.
+
+    The last/back element is determined by iteration order, so it's at
+    `*(this->data() + static_size - 1u)`.
+
+        \throws  Nothing.
+
+        \returns  `*rbegin()`
+     */
+    auto   back()       noexcept ->       reference  { return *(end() - 1); }
+    //! \overload
+    constexpr
+    auto   back() const noexcept -> const_reference  { return *(end() - 1); }
+
     // Iteration (and range-for) support
     /** \brief  Forward iteration, start point
 
@@ -844,6 +934,26 @@ struct array_md<T, M, N...>
     { return const_reverse_iterator(cbegin()); }
 
     // Other operations
+    /** \brief  Fill elements with specified value.
+
+    Assigns the given value to all the elements.
+
+        \pre  #value_type has to be Assignable.  If #value_type is a bulit-in
+              array-type, which are not Assignable, then its extents-stripped
+              type (i.e. the inner non-array type) must be Assignable instead.
+
+        \param v  The value of the assignment source.
+
+        \throws  Whatever  assignment for (an extents-stripped) #value_type
+                 throws.
+
+        \post  Each element is equivalent to *v*.
+     */
+    void  fill( value_type const &v )
+     noexcept( std::is_nothrow_copy_assignable<typename
+     std::remove_all_extents<value_type>::type>::value )
+    { for (value_type &x : *this) detail::deep_assign(x, v); }
+
     /** \brief  Swaps states with another object.
 
     The swapping should use the element-type's `swap`, found via ADL.
