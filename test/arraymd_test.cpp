@@ -10,13 +10,17 @@
 #define BOOST_TEST_MAIN  "Multi-Dimensional Array Unit Tests"
 #include <boost/test/included/unit_test.hpp>
 #include <boost/test/test_case_template.hpp>
+#include <boost/test/floating_point_comparison.hpp>
 #include <boost/mpl/list.hpp>
 
 #include "boost/container/array_md.hpp"
 
+#include <cctype>
+#include <complex>
 #include <cstddef>
 #include <cstring>
 #include <iterator>
+#include <map>
 #include <stdexcept>
 #include <type_traits>
 
@@ -27,6 +31,32 @@ namespace {
 
 // Sample testing types for elements
 typedef boost::mpl::list<int, long, unsigned char>  test_types;
+
+// Mutate element and report on index count
+struct counting_negator
+{
+    std::size_t  last_argument_count;
+
+    template < typename T, typename ...Args >
+    void  operator ()( T &t, Args &&...a )
+    {
+        t = -t;
+        last_argument_count = sizeof...( a );
+    }
+};
+
+// Reverse a character's case (upper vs. lower)
+void  reverse_case( char &c )
+{ c = std::islower(c) ? std::toupper(c) : std::tolower(c); }
+
+// Do it for a string
+void  reverse_case( char *s )
+{
+    if ( !s )
+        return;
+    while ( *s )
+        reverse_case( *s++ );
+}
 
 }
 
@@ -691,6 +721,90 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_reverse_iteration, T, test_types )
      result_length );
     BOOST_CHECK_EQUAL_COLLECTIONS( t3.crbegin(), t3.crend(), results2, results2
      + result_length );
+}
+
+BOOST_AUTO_TEST_CASE( test_apply )
+{
+    using boost::container::array_md;
+    using std::size_t;
+    using std::strcmp;
+
+    // Sample function objects
+    counting_negator  negator;  // works for any index count
+    bool              flag;
+    auto              flagger = [ &flag ]( int x ){ flag = !(x % 2); };
+
+   // Singular array
+    array_md<int>            t1{ 4 };
+    array_md<char[6]> const  t2{ "Help" };
+    size_t                   length;
+
+    t1.apply( negator );
+    BOOST_CHECK_EQUAL( t1(), -4 );
+    BOOST_CHECK_EQUAL( negator.last_argument_count, 0u );
+
+    t1.apply( flagger );
+    BOOST_CHECK( flag );
+    t1() = 9;
+    t1.apply( flagger );
+    BOOST_CHECK( not flag );
+    t2.apply( [&length](char const ( &x )[ 6 ]){length = std::strlen( x );} );
+    BOOST_CHECK_EQUAL( length, 4u );
+
+    // Compound array
+    array_md<int, 3>             t3{ {1, 4, 9} };
+    array_md<int, 2, 3>          t4{ {{ 2, 3, 5 }, { 7, 11, 13 }} };
+    array_md<int, 2, 3> const &  t5 = t4;
+    std::complex<double>         s{};
+
+    t3.apply( negator );
+    BOOST_CHECK_EQUAL( t3(0), -1 );
+    BOOST_CHECK_EQUAL( t3(1), -4 );
+    BOOST_CHECK_EQUAL( t3(2), -9 );
+    BOOST_CHECK_EQUAL( negator.last_argument_count, 1u );
+
+    t4.apply( [](int &x, size_t i0, size_t i1){x *= ( (i0 + i1) % 2u ) ? -1 :
+     +1;} );
+    BOOST_CHECK_EQUAL( t4(0, 0), +2 );
+    BOOST_CHECK_EQUAL( t4(0, 1), -3 );
+    BOOST_CHECK_EQUAL( t4(0, 2), +5 );
+    BOOST_CHECK_EQUAL( t4(1, 0), -7 );
+    BOOST_CHECK_EQUAL( t4(1, 1), +11 );
+    BOOST_CHECK_EQUAL( t4(1, 2), -13 );
+
+    t4.apply( negator );
+    BOOST_CHECK_EQUAL( t4(0, 0), -2 );
+    BOOST_CHECK_EQUAL( t4(0, 1), +3 );
+    BOOST_CHECK_EQUAL( t4(0, 2), -5 );
+    BOOST_CHECK_EQUAL( t4(1, 0), +7 );
+    BOOST_CHECK_EQUAL( t4(1, 1), -11 );
+    BOOST_CHECK_EQUAL( t4(1, 2), +13 );
+    BOOST_CHECK_EQUAL( negator.last_argument_count, 2u );
+
+    t5.apply( [&s](int x, size_t i0, size_t i1){
+        if ( (i0 + i1) % 2u )
+            s.real( s.real() + static_cast<double>(x) );
+        else
+            s.imag( s.imag() + static_cast<double>(x) );
+     } );
+    BOOST_CHECK_CLOSE( s.real(), +23.0, 0.1 );
+    BOOST_CHECK_CLOSE( s.imag(), -18.0, 0.1 );
+
+    // Fun with array-based elements
+    array_md<char[6], 3> const  t6{ {"duck", "duck", "goose"} };
+    array_md<char[6], 2, 2>     t7{ {{"Hello", "World"}, {"Video", "Watch"}} };
+
+    length = 0u;
+    t6.apply( [&length](char const *x, size_t){length += !std::strcmp( x,
+     "duck" );} );
+    BOOST_CHECK_EQUAL( length, 2u );
+
+    t7.apply( [](char *x, size_t i0, size_t i1){if ( i0 != i1 ) reverse_case(
+     x );} );
+    BOOST_CHECK_EQUAL( strcmp(t7( 0, 0 ), "Hello"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(t7( 0, 1 ), "wORLD"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(t7( 1, 0 ), "vIDEO"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(t7( 1, 1 ), "Watch"), 0 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_iteration

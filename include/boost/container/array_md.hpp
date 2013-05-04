@@ -20,7 +20,7 @@
     Contains the declarations (and definitions) of class templates modeling a
     multi-dimensional array that integrates extent definitions and indexing as
     comma-separated lists, instead of bracket-isolated descriptors.  This should
-    make multi-dimensionality compatible with C++11's variadic stuff.
+    make multi-dimensionality compatible with variadic manipulations.
 
     \warning  This library requires C++2011 features.
  */
@@ -109,6 +109,34 @@ namespace detail
     {
         for ( std::size_t  i = 0u ; i < N ; ++i )
             deep_assign( t[i], u[i] );
+    }
+
+    //! Apply function to nested arrays of given depth
+    template < typename Function, typename T, std::size_t N, typename ...Args >
+    void  array_apply( std::integral_constant<std::size_t, 0u>, Function &&f,
+     T (&t)[N], Args &&...args )
+    { std::forward<Function>(f)(t, std::forward<Args>( args )...); }
+    //! \overload
+    template < typename Function, typename T, typename ...Args >
+    void  array_apply( std::integral_constant<std::size_t, 0u>, Function &&f,
+      T &&t, Args &&...args )
+    {
+        using std::forward;
+
+        forward<Function>( f )( forward<T>(t), forward<Args>(args)... );
+    }
+    //! \overload
+    template < std::size_t L, typename Function, typename T, std::size_t N,
+     typename ...Args >
+    void  array_apply( std::integral_constant<std::size_t, L>, Function &&f,
+     T (&t)[N], Args &&...args )
+    {
+        using std::size_t;
+        using std::forward;
+
+        for ( size_t  i = 0u ; i < N ; ++i )
+            array_apply( std::integral_constant<size_t, L - 1u>{},
+             forward<Function>(f), t[i], forward<Args>(args)..., i );
     }
 
 }  // namespace detail
@@ -453,6 +481,26 @@ struct array_md<T>
 
         swap( data_block, other.data_block );
     }
+
+    /** \brief  Calls function on element.
+
+    Calls the given function, with the sole element as its argument.  It
+    includes the index coordinates, which are none.  The element will be passed
+    with the same `const` state as its owning `array_md` object.
+
+        \param f  The function, function-pointer, function-object, or lambda
+                  that will execute the code.  It has to take a single argument
+                  compatible with #value_type (or (immutable) reference of).
+
+        \post  Unspecified, since *f* is allowed to alter the sole element (when
+               taking a mutable reference) and/or itself during the call.
+     */
+    template < typename Function >
+    void  apply( Function &&f )  { std::forward<Function>(f)(data_block); }
+    //! \overload
+    template < typename Function >
+    void  apply( Function &&f ) const
+    { std::forward<Function>(f)(data_block); }
 
     // Member data
     //! The element, public to support aggregate initialization.
@@ -968,9 +1016,41 @@ struct array_md<T, M, N...>
      noexcept( detail::is_swap_nothrow<value_type>() )
     {
         // Built-in arrays get their swap from the standard namespace.  It'll
-        // (eventually) call the ADL swap from the outermost contained non-array
-        // type.
+        // (eventually) call the ADL swap of the inner non-array type.
         std::swap( data_block, other.data_block );
+    }
+
+    /** \brief  Calls function on all elements, with indices.
+
+    Calls the given function, with the each element as its argument.  It
+    includes the index coordinates as trailing arguments.  Each element will be
+    passed with the same mutablility state as its container.
+
+    The order the elements will be called should be the same as forward
+    iteration.  However, the called function should be path-conservative and not
+    depend on the visiting order, using the passed indices instead.
+
+        \param f  The function, function-pointer, function-object, or lambda
+                  that will execute the code.  It has to take #dimensionality +
+                  1 arguments.  The first argument must be compatible with
+                  #value_type (or (immutable) reference of); subsequent
+                  arguments have to be compatible with `std::size_t`.
+
+        \post  Unspecified, since *f* is allowed to alter the elements (when
+               taking a mutable reference) and/or itself during the calls.
+     */
+    template < typename Function >
+    void  apply( Function &&f )
+    {
+        detail::array_apply( std::integral_constant<std::size_t,
+         dimensionality>{}, std::forward<Function>(f), data_block );
+    }
+    //! \overload
+    template < typename Function >
+    void  apply( Function &&f ) const
+    {
+        detail::array_apply( std::integral_constant<std::size_t,
+         dimensionality>{}, std::forward<Function>(f), data_block );
     }
 
     // Member data
