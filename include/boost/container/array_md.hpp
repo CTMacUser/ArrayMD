@@ -460,8 +460,8 @@ struct array_md<T>
 
         \post  The sole element is equivalent to *v*.
      */
-    void  fill( value_type const &v )
-     noexcept( noexcept(detail::deep_assign( (value_type &)v, v )) )
+    void  fill( const_reference v )
+     noexcept( noexcept(detail::deep_assign( (reference)v, v )) )
     { detail::deep_assign(data_block, v); }
 
     /** \brief  Swaps states with another object.
@@ -997,7 +997,7 @@ struct array_md<T, M, N...>
 
         \post  Each element is equivalent to *v*.
      */
-    void  fill( value_type const &v )
+    void  fill( const_reference v )
      noexcept( std::is_nothrow_copy_assignable<typename
      std::remove_all_extents<value_type>::type>::value )
     { for (value_type &x : *this) detail::deep_assign(x, v); }

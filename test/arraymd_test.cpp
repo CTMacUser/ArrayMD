@@ -520,6 +520,8 @@ BOOST_AUTO_TEST_SUITE( test_array_md_iteration )
 BOOST_AUTO_TEST_CASE_TEMPLATE( test_range_for, T, test_types )
 {
     using boost::container::array_md;
+    using std::begin;
+    using std::end;
 
     // Singular array
     array_md<T>        t1;
@@ -544,8 +546,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_range_for, T, test_types )
 
     for ( auto &x3 : t3 )
         ++x3;
-    BOOST_CHECK_EQUAL_COLLECTIONS( t3.begin(), t3.end(), results1, results1 +
-     (sizeof( results1 ) / sizeof( results1[0] )) );
+    BOOST_CHECK_EQUAL_COLLECTIONS( begin(t3), end(t3), begin(results1),
+     end(results1) );
     BOOST_CHECK_EQUAL( t3(0, 0), (T)3 );
     BOOST_CHECK_EQUAL( t3(0, 1), (T)4 );
     BOOST_CHECK_EQUAL( t3(0, 2), (T)6 );
@@ -632,6 +634,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_reverse_iteration, T, test_types )
 {
     using boost::container::array_md;
     using std::is_same;
+    using std::begin;
+    using std::end;
 
     // If this happened, then "T *" and "T const *" would be the same.
     BOOST_REQUIRE( not std::is_const<T>::value );
@@ -678,10 +682,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_reverse_iteration, T, test_types )
     // Compound array
     array_md<T, 2, 3>          t3{ {{ 2, 3, 5 }, { 7, 11, 13 }} };
     array_md<T, 2, 3> const &  t4 = t3;
-    T const                    results1[] = { 13, 11, 7, 5, 3, 2 }, results2[]
-     = { 13, 24, 31, 36, 39, 41 };
-    auto const                 result_length = sizeof( results1 ) / sizeof(
-     results1[0] );
+    T const                    results1[]{ 13, 11, 7, 5, 3, 2 }, results2[]{ 13,
+     24, 31, 36, 39, 41 };
 
     BOOST_CHECK( not (is_same<decltype( t3.rbegin() ), decltype( t3.crbegin()
      )>::value) );
@@ -708,19 +710,19 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_reverse_iteration, T, test_types )
     BOOST_CHECK_EQUAL( t3.crend() - t3.crbegin(), 6 );
     BOOST_CHECK_EQUAL( t4.crend() - t4.crbegin(), 6 );
 
-    BOOST_CHECK_EQUAL_COLLECTIONS( t3.rbegin(), t3.rend(), results1, results1 +
-     result_length );
-    BOOST_CHECK_EQUAL_COLLECTIONS( t4.rbegin(), t4.rend(), results1, results1 +
-     result_length );
-    BOOST_CHECK_EQUAL_COLLECTIONS( t3.crbegin(), t3.crend(), results1, results1
-     + result_length );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t3.rbegin(), t3.rend(), begin(results1),
+     end(results1) );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t4.rbegin(), t4.rend(), begin(results1),
+     end(results1) );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t3.crbegin(), t3.crend(), begin(results1),
+     end(results1) );
 
     for ( auto  i = t3.rbegin() + 1 ; t3.rend() != i ; ++i )
         *i += *( i - 1 );
-    BOOST_CHECK_EQUAL_COLLECTIONS( t4.rbegin(), t4.rend(), results2, results2 +
-     result_length );
-    BOOST_CHECK_EQUAL_COLLECTIONS( t3.crbegin(), t3.crend(), results2, results2
-     + result_length );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t4.rbegin(), t4.rend(), begin(results2),
+     end(results2) );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t3.crbegin(), t3.crend(), begin(results2),
+     end(results2) );
 }
 
 BOOST_AUTO_TEST_CASE( test_apply )
