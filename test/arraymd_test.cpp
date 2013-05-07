@@ -936,6 +936,59 @@ BOOST_AUTO_TEST_CASE( test_equality )
     BOOST_CHECK( t6 != t7 );
 }
 
+BOOST_AUTO_TEST_CASE( test_less_than )
+{
+    using boost::container::array_md;
+
+    // Singular array
+    array_md<int>  t1{ 3 }, t2{ 4 };
+    array_md<long>  t3{ 5L }, t4{ 3L };
+
+    BOOST_CHECK( not(t1 < t1) );
+    BOOST_CHECK( not(t1 > t1) );
+    BOOST_CHECK( t1 <= t1 );
+    BOOST_CHECK( t1 >= t1 );
+    BOOST_CHECK( t1 < t2 );
+    BOOST_CHECK( not(t1 > t2) );
+    BOOST_CHECK( t1 <= t2 );
+    BOOST_CHECK( not(t1 >= t2) );
+    BOOST_CHECK( t1 < t3 );
+    BOOST_CHECK( not(t1 > t3) );
+    BOOST_CHECK( t1 <= t3 );
+    BOOST_CHECK( not(t1 >= t3) );
+    BOOST_CHECK( not(t1 < t4) );
+    BOOST_CHECK( not(t1 > t4) );
+    BOOST_CHECK( t1 <= t4 );
+    BOOST_CHECK( t1 >= t4 );
+
+    BOOST_CHECK( t2 > t1 );
+    BOOST_CHECK( t3 > t1 );
+    BOOST_CHECK( t2 >= t1 );
+    BOOST_CHECK( t3 >= t1 );
+
+    // Compound array
+    array_md<int, 2, 3>   t5{ {{ 2, 3, 5 }, { 7, 11, 13 }} }, t6 = t5;
+    array_md<long, 2, 3>  t7{ {{ 2L, 3L, 5L }, { 7L, 11L, 13L }} };
+
+    BOOST_CHECK( not(t5 < t6) );
+    BOOST_CHECK( not(t5 > t6) );
+    BOOST_CHECK( not(t6 < t7) );
+    BOOST_CHECK( not(t6 > t7) );
+    BOOST_CHECK( t5 <= t6 );
+    BOOST_CHECK( t5 >= t6 );
+    BOOST_CHECK( t6 <= t7 );
+    BOOST_CHECK( t6 >= t7 );
+    t6( 0, 2 )++;
+    BOOST_CHECK( t5 < t6 );
+    BOOST_CHECK( t5 <= t6 );
+    BOOST_CHECK( not(t6 < t7) );
+    BOOST_CHECK( t6 >= t7 );
+    BOOST_CHECK( t6 > t5 );
+    BOOST_CHECK( t6 > t7 );
+    BOOST_CHECK( not(t5 > t7) );
+    BOOST_CHECK( t5 <= t7 );
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE( test_swap, T, test_types )
 {
     using boost::container::array_md;

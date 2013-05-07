@@ -61,12 +61,21 @@ template parameters, making multi-dimension stuff compatible.
 This class is designed as an aggregate, so aggregate-initialization has to
 be used.  Objects support default-, copy-, and move-construction if the
 element type does.  The same applies to copy- and move-assignment and
-destruction.
+destruction.  This class should be trivially-copyable, trivial, standard-layout,
+and/or POD if the element type is.
 
-Since a multi-dimensional array is not a linear structure, linear-based access
-should be avoided.  However, much of the traditional linear-aligned standard
-container interface is provided, to support range-`for` and many standard and
-standard-inspired algorithms.
+Ideally, a multi-dimensional array is not a linear structure and would avoid
+providing linear-based access.  However, support for range-`for` and many
+standard and standard-inspired algorithms require linear access, so it's
+provided.  In fact, this class provides the same external interface as
+`std::array` (except for any zero-sized extents), especially when a single
+extent is given.  It meets the requirements for Container (except empty on
+default/value-initialization), Reversible Container, the optional container
+operations, none of the Sequence container requirements (since they are either
+special constructor calls or size-changing operations), all the optional
+Sequence operations that don't involve size-changing (but `operator []` and `at`
+act differently when the number of extents isn't exactly one), the Allocator
+pointer type-aliases, and the (out-of-class) `tuple` interface.
 
     \pre  If any extents are given, they all must be greater than zero.
 
@@ -1132,7 +1141,7 @@ don't support `operator ==`.
     \param l  The left-side argument.
     \param r  The right-side argument.
 
-    \see  #operator==(array_md<T,U,N...>const&,array_md<T,U,N...>const&)
+    \see  #operator==(array_md<T,N...>const&,array_md<U,N...>const&)
 
     \retval true   If any element in *l* doesn't equal its corresponding element
                    in *r*.
@@ -1142,6 +1151,121 @@ template < typename T, typename U, std::size_t ...N >
 inline
 bool  operator !=( array_md<T, N...> const &l, array_md<U, N...> const &r )
 { return !(l == r); }
+
+/** \brief  Less-than comparison for `array_md`.
+
+Compares two `array_md` objects, with the same size (same number of dimensions
+and the corresponding dimensions have to be equal), for the first object being
+ordered less than the second.  Note that it usually won't work with built-in
+arrays as the element types, since they don't support neither `operator ==` nor
+`operator <`.
+
+Comparison is elementary when the dimension count (`sizeof...(N)`) is zero or
+one.  For higher dimensions, it's the lexicographical compare of the top-level
+array-components, which switch to the lexicographical compare of the 2nd-level
+array-components of the differing 1st-level components, etc., which translates
+to a lexicographical compare to the elements in iteration order, since elements
+are stored in row-major order.
+
+    \pre  `std::declval<T>() == std::declval<U>()` is well-formed.
+    \pre  `std::declval<T>() < std::declval<U>()` is well-formed.
+
+    \param l  The left-side argument.
+    \param r  The right-side argument.
+
+    \see  #operator==(array_md<T,N...>const&,array_md<U,N...>const&)
+
+    \retval true   If the element sequences for *l* and *r* differ in at least
+                   one spot, and the *l*'s element at that spot is less than the
+                   corresponding element from *r*.
+    \retval false  Otherwise.
+ */
+template < typename T, typename U, std::size_t ...N >
+inline
+bool  operator <( array_md<T, N...> const &l, array_md<U, N...> const &r )
+{
+    auto const  s = std::mismatch( l.begin(), l.end(), r.begin() );
+
+    return ( s.first != l.end() ) && ( *s.first < *s.second );
+}
+
+/** \brief  Greater-than comparison for `array_md`.
+
+Compares two `array_md` objects, with the same size (same number of dimensions
+and the corresponding dimensions have to be equal), for the first object being
+ordered greater than the second.  Note that it usually won't work with built-in
+arrays as the element types, since they don't support neither `operator ==` nor
+`operator <`.
+
+    \pre  `std::declval<U>() == std::declval<T>()` is well-formed.
+    \pre  `std::declval<U>() < std::declval<T>()` is well-formed.
+
+    \param l  The left-side argument.
+    \param r  The right-side argument.
+
+    \see  #operator<(array_md<T,N...>const&,array_md<U,N...>const&)
+
+    \retval true   If the element sequences for *l* and *r* differ in at least
+                   one spot, and the *l*'s element at that spot is greater than
+                   the corresponding element from *r*.
+    \retval false  Otherwise.
+ */
+template < typename T, typename U, std::size_t ...N >
+inline
+bool  operator >( array_md<T, N...> const &l, array_md<U, N...> const &r )
+{ return operator <( r, l ); }
+
+/** \brief  Greater-than-or-equal-to comparison for `array_md`.
+
+Compares two `array_md` objects, with the same size (same number of dimensions
+and the corresponding dimensions have to be equal), for the first object being
+ordered greater than or equal to the second (i.e. not less than).  Note that it
+usually won't work with built-in arrays as the element types, since they don't
+support neither `operator ==` nor `operator <`.
+
+    \pre  `std::declval<T>() == std::declval<U>()` is well-formed.
+    \pre  `std::declval<T>() < std::declval<U>()` is well-formed.
+
+    \param l  The left-side argument.
+    \param r  The right-side argument.
+
+    \see  #operator<(array_md<T,N...>const&,array_md<U,N...>const&)
+
+    \retval true   If the element sequences for *l* and *r* differ in at least
+                   one spot, and the *l*'s element at that spot is greater than
+                   or equal to the corresponding element from *r*.
+    \retval false  Otherwise.
+ */
+template < typename T, typename U, std::size_t ...N >
+inline
+bool  operator >=( array_md<T, N...> const &l, array_md<U, N...> const &r )
+{ return not operator <( l, r ); }
+
+/** \brief  Less-than-or-equal-to comparison for `array_md`.
+
+Compares two `array_md` objects, with the same size (same number of dimensions
+and the corresponding dimensions have to be equal), for the first object being
+ordered less than or equal to the second (i.e. not greater than).  Note that it
+usually won't work with built-in arrays as the element types, since they don't
+support neither `operator ==` nor `operator <`.
+
+    \pre  `std::declval<U>() == std::declval<T>()` is well-formed.
+    \pre  `std::declval<U>() < std::declval<T>()` is well-formed.
+
+    \param l  The left-side argument.
+    \param r  The right-side argument.
+
+    \see  #operator<(array_md<T,N...>const&,array_md<U,N...>const&)
+
+    \retval true   If the element sequences for *l* and *r* differ in at least
+                   one spot, and the *l*'s element at that spot is less than or
+                   equal to the corresponding element from *r*.
+    \retval false  Otherwise.
+ */
+template < typename T, typename U, std::size_t ...N >
+inline
+bool  operator <=( array_md<T, N...> const &l, array_md<U, N...> const &r )
+{ return not operator >( l, r ); }
 
 
 //  Multi-dimensional array class template, other operations  ----------------//
@@ -1158,8 +1282,7 @@ have to be equal.
     \param a  The first object to have its state exchanged.
     \param b  The second object to have its state exchanged.
 
-    \see  #array_md<T>::swap(array_md<T>&)
-    \see  #array_md<T,M,N...>::swap(array_md<T,M,N...>&)
+    \see  #array_md<T,N...>::swap(array_md<T,N...>&)
 
     \throws Whatever  the element-level swap does.
 
@@ -1174,7 +1297,9 @@ void  swap( array_md<T, N...> &a, array_md<T, N...> &b )
 
 /** \brief  Non-member array element access
 
-Extract's the *I*th element from the array.
+Extract's the *I*th element from the array.  Even when the `dimensionality` is
+greater than one, the index treats the array like it's flat, so the element
+type is always `value_type`, and not some intermediate sub-array type.
 
     \pre  0 \<= *I* \< array_md<T, N...>::static_size.
 
@@ -1216,7 +1341,8 @@ auto  get( array_md<T, N...> &&a ) noexcept -> T &&
 //! The standard namespace
 namespace std
 {
-    //! Provides number of `value_type` elements in an `array_md` object.
+    //! Provides number of direct elements in an `array_md` object.  For this
+    //! type, all of the elements are of type `value_type`.
     template < typename T, size_t ...N >
     class tuple_size< boost::container::array_md<T, N...> >
         : public integral_constant< size_t, boost::container::array_md<T,
@@ -1226,7 +1352,13 @@ namespace std
     //! Provides the type of each element in an `array_md` object.
     template < size_t I, typename T, size_t ...N >
     class tuple_element< I, boost::container::array_md<T, N...> >
-    { typedef T type; };
+    {
+        static_assert( I < boost::container::array_md<T, N...>::static_size,
+         "Index too large" );
+
+        //! The target type, index-independent for an array.
+        typedef T  type;
+    };
 
 }  // namespace std
 
