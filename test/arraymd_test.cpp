@@ -972,4 +972,147 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_swap, T, test_types )
     BOOST_CHECK( t7 != t5 );
 }
 
+BOOST_AUTO_TEST_CASE( test_get )
+{
+    using boost::container::array_md;
+    using std::is_same;
+    using std::tuple_size;
+    using std::tuple_element;
+    using boost::container::get;
+    using std::strcmp;
+    using std::strcpy;
+
+    // Singular array, scalar element
+    typedef array_md<int>  sample1_type;
+
+    BOOST_REQUIRE_EQUAL( tuple_size<sample1_type>::value, 1u );
+    BOOST_REQUIRE( (is_same<typename tuple_element<0, sample1_type>::type,
+     int>::value) );
+
+    sample1_type          t1{ 2 };
+    sample1_type const &  t2 = t1;
+
+    BOOST_CHECK_EQUAL( get<0>(t1), 2 );
+    get<0>( t1 ) = 3;
+    BOOST_CHECK_EQUAL( get<0>(t2), 3 );
+    BOOST_CHECK_EQUAL( get<0>(sample1_type{ 5 }), 5 );
+
+    // Singular array, array element
+    typedef array_md<char[6]>  sample2_type;
+
+    BOOST_REQUIRE_EQUAL( tuple_size<sample2_type>::value, 1u );
+    BOOST_REQUIRE( (is_same<typename tuple_element<0, sample2_type>::type,
+     char[6]>::value) );
+
+    sample2_type          t3{ "Hello" };
+    sample2_type const &  t4 = t3;
+
+    BOOST_CHECK_EQUAL( strcmp(get<0>( t3 ), "Hello"), 0 );
+    strcpy( get<0>(t3), "Mello" );
+    BOOST_CHECK_EQUAL( strcmp(get<0>( t4 ), "Mello"), 0 );
+    BOOST_CHECK_NE( strcmp(get<0>( sample2_type{"World"} ), "Video"), 0 );
+
+    // Compound array, scalar element
+    typedef array_md<long, 2>  sample3_type;
+
+    BOOST_REQUIRE_EQUAL( tuple_size<sample3_type>::value, 2u );
+    BOOST_REQUIRE( (is_same<typename tuple_element<0, sample3_type>::type,
+     long>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<1, sample3_type>::type,
+     long>::value) );
+
+    sample3_type          t5{ {3L, 5L} };
+    sample3_type const &  t6 = t5;
+
+    BOOST_CHECK_EQUAL( get<0>(t5), 3L );
+    get<0>( t5 ) = 4L;
+    BOOST_CHECK_EQUAL( get<0>(t6), 4L );
+    BOOST_CHECK_EQUAL( get<1>(t6), 5L );
+    BOOST_CHECK_EQUAL( get<1>(sample3_type{ {6L, 7L} }), 7L );
+
+    // Compound array, array element
+    typedef array_md<char[6], 3>  sample4_type;
+
+    BOOST_REQUIRE_EQUAL( tuple_size<sample4_type>::value, 3u );
+    BOOST_REQUIRE( (is_same<typename tuple_element<0, sample4_type>::type,
+     char[6]>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<1, sample4_type>::type,
+     char[6]>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<2, sample4_type>::type,
+     char[6]>::value) );
+
+    sample4_type          t7{ {"Hello", "there", "World"} };
+    sample4_type const &  t8 = t7;
+
+    BOOST_CHECK_EQUAL( strcmp(get<1>( t7 ), "there"), 0 );
+    strcpy( get<1>(t7), "where" );
+    BOOST_CHECK_EQUAL( strcmp(get<0>( t8 ), "Hello"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(get<1>( t8 ), "where"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(get<2>( t8 ), "World"), 0 );
+    BOOST_CHECK_NE( strcmp(get<0>( sample4_type{{ "North", "South",
+     "Watch" }} ), "Video"), 0 );
+
+    // More compound arrays, scalar element
+    typedef array_md<short, 2, 3>  sample5_type;
+
+    BOOST_REQUIRE_EQUAL( tuple_size<sample5_type>::value, 6u );
+    BOOST_REQUIRE( (is_same<typename tuple_element<0, sample5_type>::type,
+     short>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<1, sample5_type>::type,
+     short>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<2, sample5_type>::type,
+     short>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<3, sample5_type>::type,
+     short>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<4, sample5_type>::type,
+     short>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<5, sample5_type>::type,
+     short>::value) );
+
+    sample5_type          t9{ {{ 2, 3, 5 }, { 7, 11, 13 }} };
+    sample5_type const &  t10 = t9;
+
+    BOOST_CHECK_EQUAL( get<0>(t9), 2 );
+    get<0>( t9 ) = -4;
+    BOOST_CHECK_EQUAL( get<0>(t10), -4 );
+    BOOST_CHECK_EQUAL( get<1>(t10), 3 );
+    BOOST_CHECK_EQUAL( get<2>(t10), 5 );
+    BOOST_CHECK_EQUAL( get<3>(t10), 7 );
+    BOOST_CHECK_EQUAL( get<4>(t10), 11 );
+    BOOST_CHECK_EQUAL( get<5>(t10), 13 );
+    BOOST_CHECK_EQUAL( get<4>(sample5_type{ {{1, 4, 9}, {16, 25, 36}} }), 25 );
+
+    // More compound arrays, array element
+    typedef array_md<char[6], 3, 2>  sample6_type;
+
+    BOOST_REQUIRE_EQUAL( tuple_size<sample6_type>::value, 6u );
+    BOOST_REQUIRE( (is_same<typename tuple_element<0, sample6_type>::type,
+     char[6]>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<1, sample6_type>::type,
+     char[6]>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<2, sample6_type>::type,
+     char[6]>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<3, sample6_type>::type,
+     char[6]>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<4, sample6_type>::type,
+     char[6]>::value) );
+    BOOST_REQUIRE( (is_same<typename tuple_element<5, sample6_type>::type,
+     char[6]>::value) );
+
+    sample6_type          t11{ {{ "Four", "score" }, { "and", "seven" },
+     { "years", "ago" }} };
+    sample6_type const &  t12 = t11;
+
+    BOOST_CHECK_EQUAL( strcmp(get<3>( t11 ), "seven"), 0 );
+    strcpy( get<3>(t11), "lever" );
+    BOOST_CHECK_EQUAL( strcmp(get<0>( t12 ), "Four"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(get<1>( t12 ), "score"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(get<2>( t12 ), "and"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(get<3>( t12 ), "lever"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(get<4>( t12 ), "years"), 0 );
+    BOOST_CHECK_EQUAL( strcmp(get<5>( t12 ), "ago"), 0 );
+    BOOST_CHECK_NE( strcmp(get<2>( sample6_type{{{"array", "lambd"}, {"struc",
+     "class"}, {"short", "nullp"}}} ), "Video"), 0 );
+}
+
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_operations

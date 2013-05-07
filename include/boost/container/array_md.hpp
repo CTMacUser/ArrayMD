@@ -33,6 +33,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -1171,9 +1172,63 @@ void  swap( array_md<T, N...> &a, array_md<T, N...> &b )
  noexcept( noexcept(a.swap( b )) )
 { a.swap(b); }
 
+/** \brief  Non-member array element access
+
+Extract's the *I*th element from the array.
+
+    \pre  0 \<= *I* \< array_md<T, N...>::static_size.
+
+    \tparam I  The index of the desired element.  The index is the offset of the
+               element from begin(*a*).
+
+    \param a  The array to be extracted from.
+
+    \returns  A reference to the desired element.
+ */
+template < std::size_t I, typename T, std::size_t ...N >
+inline constexpr
+auto  get( array_md<T, N...> const &a ) noexcept -> T const &
+{
+    static_assert( I < array_md<T, N...>::static_size, "Index too large" );
+
+    return a.data()[ I ];
+}
+
+//! \overload
+template < std::size_t I, typename T, std::size_t ...N >
+inline
+auto  get( array_md<T, N...> &a ) noexcept -> T &
+{ return const_cast<T &>( get<I>(const_cast<array_md<T,N...> const &>( a )) ); }
+
+//! \overload
+template < std::size_t I, typename T, std::size_t ...N >
+inline
+auto  get( array_md<T, N...> &&a ) noexcept -> T &&
+{ return std::forward<T>( get<I>(a) ); }
+
 
 }  // namespace container
 }  // namespace boost
+
+
+//  Specializations from the STD namespace  ----------------------------------//
+
+//! The standard namespace
+namespace std
+{
+    //! Provides number of `value_type` elements in an `array_md` object.
+    template < typename T, size_t ...N >
+    class tuple_size< boost::container::array_md<T, N...> >
+        : public integral_constant< size_t, boost::container::array_md<T,
+           N...>::static_size >
+    { };
+
+    //! Provides the type of each element in an `array_md` object.
+    template < size_t I, typename T, size_t ...N >
+    class tuple_element< I, boost::container::array_md<T, N...> >
+    { typedef T type; };
+
+}  // namespace std
 
 
 #endif // BOOST_CONTAINER_ARRAY_MD_HPP
