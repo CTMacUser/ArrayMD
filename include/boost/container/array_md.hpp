@@ -149,6 +149,54 @@ namespace detail
              forward<Function>(f), t[i], forward<Args>(args)..., i );
     }
 
+    //! Strip a specified number of array extents (instead of either one or all)
+    template < typename T, std::size_t Amount > struct remove_some_extents;
+    //! Base-case specialization of `remove_some_extents`.
+    template < typename T > struct remove_some_extents<T, 0u>
+    { typedef T type; };
+    //! The general (recursive) case
+    template < typename T, std::size_t Amount >
+    struct remove_some_extents
+    {
+        typedef typename remove_some_extents<typename
+         std::remove_extent<T>::type, Amount - 1u>::type type;
+    };
+
+    //! `address_first_element` when input is a non-array type
+    template < typename T >
+    constexpr
+    auto  address_first_element_impl( T &&t, std::integral_constant<std::size_t,
+     0u> ) noexcept -> typename std::remove_reference<T>::type *
+    { return &t; }  // should use std::addressof once it's constexpr
+    //! `address_first_element` when array nesting is removed
+    template < typename T, std::size_t N >
+    constexpr
+    auto  address_first_element_impl( T (&t)[N],
+     std::integral_constant<std::size_t, 1u> ) noexcept -> T *
+    { return t; }
+    //! `address_first_element` when there's too many array nestings
+    template < typename T, std::size_t K >
+    constexpr
+    auto  address_first_element_impl( T &&t, std::integral_constant<std::size_t,
+     K> ) noexcept -> typename remove_some_extents<typename
+     std::remove_reference<T>::type, K>::type *
+    {
+        return address_first_element_impl( static_cast<T&&>(t)[0],
+         std::integral_constant<std::size_t, K - 1u>{} );
+    }
+
+    //! Get the address of the first element
+    template < std::size_t Extents = 1u, typename T >
+    constexpr
+    auto  address_first_element( T &&t ) noexcept ->
+    typename remove_some_extents<typename std::remove_reference<T>::type,
+     Extents>::type *
+    {
+        return address_first_element_impl( static_cast<T&&>(t),
+         std::integral_constant<std::size_t, Extents *
+         std::is_array<typename std::remove_reference<T>::type>::value>{} );
+    }
+
 }  // namespace detail
 //! \endcond
 
@@ -240,10 +288,12 @@ struct array_md<T>
 
         \returns  The address of the first element (of #value_type).
      */
-    auto  data()       noexcept -> pointer        { return &data_block; }
+    auto  data()       noexcept -> pointer
+    { return detail::address_first_element<dimensionality>(data_block); }
     //! \overload
     constexpr
-    auto  data() const noexcept -> const_pointer  { return &data_block; }
+    auto  data() const noexcept -> const_pointer
+    { return detail::address_first_element<dimensionality>(data_block); }
 
     /** \brief  Whole-object access to the element data.
 
@@ -615,14 +665,11 @@ struct array_md<T, M, N...>
         \returns  The address of the first element (of #value_type).
      */
     auto  data()       noexcept -> pointer
-    { return static_cast<pointer>(static_cast<void *>( &data_block )); }
+    { return detail::address_first_element<dimensionality>(data_block); }
     //! \overload
     constexpr
     auto  data() const noexcept -> const_pointer
-    {
-        return static_cast<const_pointer>(
-         static_cast<void const *>(&data_block) );
-    }
+    { return detail::address_first_element<dimensionality>(data_block); }
 
     /** \brief  Access to element data, with depth of exactly one.
 
