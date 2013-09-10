@@ -22,6 +22,7 @@
 #include <iterator>
 #include <map>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 
 
@@ -1166,6 +1167,44 @@ BOOST_AUTO_TEST_CASE( test_get )
     BOOST_CHECK_EQUAL( strcmp(get<5>( t12 ), "ago"), 0 );
     BOOST_CHECK_NE( strcmp(get<2>( sample6_type{{{"array", "lambd"}, {"struc",
      "class"}, {"short", "nullp"}}} ), "Video"), 0 );
+}
+
+BOOST_AUTO_TEST_CASE( test_conversion )
+{
+    using boost::container::array_md;
+
+    // Singular arrays
+    array_md<unsigned char> const  t1{ 13u };
+    array_md<char[6]> const        t2{ "Hello" };
+    auto const                     t3 = static_cast<array_md<signed char>>(t1);
+    auto const                     t4 = static_cast<array_md<std::string>>(t2);
+
+    BOOST_CHECK_EQUAL( t3.front(), 13 );
+    BOOST_CHECK_EQUAL( t4.front(), "Hello" );
+
+    // Compound arrays
+    using std::string;
+
+    array_md<int, 3> const         t5{ {2, -3, 5} };
+    array_md<char[6], 2, 2> const  t6{ {{"Hello","World"}, {"Video","Watch"}} };
+    array_md<long, 2, 3, 5> const  t7{ {{{-2, +3, -5, +7, -11}, {+13, -17, +19,
+     -23, +29}, {-31, +37, -41, +43, -47}}, {{+53, -57, +59, -61, +67}, {-71,
+     +73, -79, +83, -87}, {+89, -93, +97, -101, +103}}} };
+    auto const                     t8 = static_cast<array_md<double, 3>>( t5 );
+    auto const                   t9 = static_cast<array_md<string, 2, 2>>( t6 );
+    auto const                t10 = static_cast<array_md<float, 2, 3, 5>>( t7 );
+
+    BOOST_CHECK_CLOSE( t8[0], +2.0, 0.1 );
+    BOOST_CHECK_CLOSE( t8[1], -3.0, 0.1 );
+    BOOST_CHECK_CLOSE( t8[2], +5.0, 0.1 );
+    BOOST_CHECK_EQUAL( t9[0][0], "Hello" );
+    BOOST_CHECK_EQUAL( t9[0][1], "World" );
+    BOOST_CHECK_EQUAL( t9[1][0], "Video" );
+    BOOST_CHECK_EQUAL( t9[1][1], "Watch" );
+    BOOST_CHECK_CLOSE( t10[0][0][0], -2.0f, 0.1 );
+    BOOST_CHECK_CLOSE( t10[0][0][1], +3.0f, 0.1 );
+    BOOST_CHECK_CLOSE( t10[0][1][0], +13.0f, 0.1 );
+    BOOST_CHECK_CLOSE( t10[1][0][0], +53.0f, 0.1 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_operations

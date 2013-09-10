@@ -562,6 +562,20 @@ struct array_md<T>
     void  apply( Function &&f ) const
     { std::forward<Function>(f)(data_block); }
 
+    /** \brief  Conversion, cross-type same-shape
+
+    Creates a copy of this object, with a different type for the value.
+
+        \pre  `static_cast<U>( std::declval<value_type>() )` is well-formed.
+
+        \throws  Whatever  the element-level conversion throws.
+
+        \returns  An object containing a conversion of the sole element.
+     */
+    template < typename U >
+    explicit constexpr  operator array_md<U>() const
+    { return {static_cast<U>( data_block )}; }
+
     // Member data
     //! The element, public to support aggregate initialization.
     data_type  data_block;
@@ -1110,6 +1124,10 @@ struct array_md<T, M, N...>
          dimensionality>{}, std::forward<Function>(f), data_block );
     }
 
+    //! Conversion, cross-type same-shape
+    template < typename U >
+    explicit constexpr  operator array_md<U, M, N...>() const;
+
     // Member data
     //! The element(s), public to support aggregate initialization.
     data_type  data_block;
@@ -1151,6 +1169,73 @@ typename array_md<T, M, N...>::size_type  array_md<T, M, N...>::static_sizes[ 1u
 template < typename T, std::size_t M, std::size_t ...N >
 constexpr
 typename array_md<T, M, N...>::size_type  array_md<T, M, N...>::static_size;
+
+
+//  More implementation details  ---------------------------------------------//
+
+//! \cond
+namespace detail
+{
+    //! Base construct for simulating C++14's integer sequences
+    //! (The next few types and function taken from StackOverflow.)
+    template < std::size_t ... > struct seq { typedef seq type; };
+    //! Make larger sequences, prototype
+    template < typename S1, typename S2 > struct concat;
+    //! Make a larger sequence, actual work
+    template < std::size_t ...I1, std::size_t ...I2 >
+    struct concat< seq<I1...>, seq<I2...> >
+        : seq< I1..., (sizeof...( I1 ) + I2)... >
+    { };
+
+    //! Make an in-order sequence, prototype
+    template <std::size_t N> struct gen_seq;
+    //! In-order integer sequence, degenerate case
+    template < > struct gen_seq< 0u > : seq< > {};
+    //! In-order integer sequence, base case
+    template < > struct gen_seq< 1u > : seq< 0 > {};
+    //! In-order integer sequence, recursive case
+    template < std::size_t N > struct gen_seq
+        : concat< typename gen_seq<N/2u>::type, typename gen_seq<N - N/2u>::type
+          >::type
+    { };
+
+    //! Create objects with the integer sequence encoded
+    template < std::size_t N >
+    constexpr
+    typename gen_seq<N>::type  make_int_seq() noexcept  { return {}; }
+
+    //! Convert arrays with the help of a integer sequence
+    template < typename U, typename T, std::size_t ...N, std::size_t ...I >
+    constexpr
+    boost::container::array_md<U, N...>
+    convert_array( boost::container::array_md<T, N...> const &t, seq<I...> )
+    {
+        // The expression deliberately uses the sloppy array initialization that
+        // forgoes internal braces.  That makes it work with any array rank, but
+        // flags warnings in compilers that care about proper form.
+        return boost::container::array_md<U, N...>{ {static_cast<U>( *(t.data()
+         + I) )...} };
+    }
+
+}  // namespace detail
+//! \endcond
+
+
+//  Multi-dimensional array class template, member operator definition  ------//
+
+/** Creates a copy of this object, with a different type for the value.
+
+    \pre  `static_cast<U>( std::declval<value_type>() )` is well-formed.
+
+    \throws  Whatever  the element-level conversion throws.
+
+    \returns  An object containing conversions of each element.
+ */
+template < typename T, std::size_t M, std::size_t ...N >
+template < typename U >
+inline constexpr
+array_md<T, M, N...>::operator array_md<U, M, N...>() const
+{ return detail::convert_array<U>(*this, detail::make_int_seq<static_size>()); }
 
 
 //  Multi-dimensional array class template, operator definitions  ------------//
