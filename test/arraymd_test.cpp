@@ -1207,4 +1207,42 @@ BOOST_AUTO_TEST_CASE( test_conversion )
     BOOST_CHECK_CLOSE( t10[1][0][0], +53.0f, 0.1 );
 }
 
+BOOST_AUTO_TEST_CASE( test_creation )
+{
+    using boost::container::make_array;
+    using boost::container::array_md;
+    using std::is_same;
+
+    // All same type
+    auto  t1 = make_array( 0, -1, +2 );
+    auto  t2 = make_array( 1UL, 4UL, 0UL, 57UL );
+
+    BOOST_CHECK( (is_same<decltype( t1 ), array_md<int, 3u>>::value) );
+    BOOST_CHECK( (is_same<decltype( t2 ), array_md<unsigned long,4u>>::value) );
+
+    // Mixed types
+    auto  t3 = make_array( -6, +3u );
+    auto  t4 = make_array( -7, +4u, -99LL, +100UL );
+    auto  t5 = make_array( 1.0f, -3.5 );
+    auto  t6 = make_array( 2.1, -709.0f, +1024.2048L );
+    auto  t7 = make_array( -80.0L, 79ULL );
+
+    BOOST_CHECK( (is_same<decltype( t3 ), array_md<unsigned, 2u>>::value) );
+    BOOST_CHECK( (is_same<decltype( t4 ), array_md<long long, 4u>>::value) );
+    BOOST_CHECK_EQUAL( t4[0],   -7LL );
+    BOOST_CHECK_EQUAL( t4[1],   +4LL );
+    BOOST_CHECK_EQUAL( t4[2],  -99LL );
+    BOOST_CHECK_EQUAL( t4[3], +100LL );
+    BOOST_CHECK( (is_same<decltype( t5 ), array_md<double, 2u>>::value) );
+    BOOST_CHECK_CLOSE( t5[0],  1.0, 0.1 );
+    BOOST_CHECK_CLOSE( t5[1], -3.5, 0.1 );
+    BOOST_CHECK( (is_same<decltype( t6 ), array_md<long double, 3u>>::value) );
+    BOOST_CHECK_CLOSE( t6[0],     2.1L,    0.1 );
+    BOOST_CHECK_CLOSE( t6[1],  -709.0L,    0.1 );
+    BOOST_CHECK_CLOSE( t6[2], +1024.2048L, 0.1 );
+    BOOST_CHECK( (is_same<decltype( t7 ), array_md<long double, 2u>>::value) );
+    BOOST_CHECK_CLOSE( t7[0], -80.0L, 0.1 );
+    BOOST_CHECK_CLOSE( t7[1], +79.0L, 0.1 );
+}
+
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_operations

@@ -1427,9 +1427,38 @@ void  swap( array_md<T, N...> &a, array_md<T, N...> &b )
  noexcept( noexcept(a.swap( b )) )
 { a.swap(b); }
 
+/** \brief  Create an array from a list of values.
+
+Makes an new `array_md` object, and uses the given arguments as the
+initializers.  The element type and number of elements are automatically
+computed from the arguments.  (A zero-sized array cannot be created.)
+
+    \pre  A common type between all the arguments can be found.
+    \pre  `static_cast<C>( std::declval<A>() )` is well-formed, where `C` is the
+          common type and `A` is any of the function argument types.
+
+    \param first  The first object to be copied into the new array.
+    \param other  The subsequent object(s) to be copied into the new array.
+                  (It may be empty.)
+
+    \throws Whatever  converting any argument to the element type may throw.
+
+    \returns  an array with a copy of the function arguments.
+ */
+template < typename First, typename ...Rest >
+inline constexpr
+array_md<typename std::common_type<First, Rest...>::type, 1u + sizeof...(Rest)>
+make_array( First const &first, Rest const &...other )
+{
+    typedef typename std::common_type<First, Rest...>::type  result_type;
+
+    return array_md<result_type, 1u + sizeof...(Rest)>{
+     {static_cast<result_type>(first), static_cast<result_type>(other)...} };
+}
+
 /** \brief  Non-member array element access
 
-Extract's the *I*th element from the array.  Even when the `dimensionality` is
+Extracts the *I*th element from the array.  Even when the `dimensionality` is
 greater than one, the index treats the array like it's flat, so the element
 type is always `value_type`, and not some intermediate sub-array type.
 
