@@ -1433,27 +1433,26 @@ Makes an new `array_md` object, and uses the given arguments as the
 initializers.  The element type and number of elements are automatically
 computed from the arguments.  (A zero-sized array cannot be created.)
 
-    \pre  A common type between all the arguments can be found.
+    \pre  `sizeof...(args) > 0`.
+    \pre  `typename std::common_type<decltype(args)...>::type` is well-formed.
     \pre  `static_cast<C>( std::declval<A>() )` is well-formed, where `C` is the
           common type and `A` is any of the function argument types.
 
-    \param first  The first object to be copied into the new array.
-    \param other  The subsequent object(s) to be copied into the new array.
-                  (It may be empty.)
+    \param args  The objects to initialize each array element.
 
     \throws Whatever  converting any argument to the element type may throw.
 
     \returns  an array with a copy of the function arguments.
  */
-template < typename First, typename ...Rest >
+template < typename ...Args >
 inline constexpr
-array_md<typename std::common_type<First, Rest...>::type, 1u + sizeof...(Rest)>
-make_array( First const &first, Rest const &...other )
+array_md<typename std::common_type<Args...>::type, sizeof...(Args)>
+make_array( Args &&...args )
 {
-    typedef typename std::common_type<First, Rest...>::type  result_type;
+    typedef typename std::common_type<Args...>::type  result_type;
 
-    return array_md<result_type, 1u + sizeof...(Rest)>{
-     {static_cast<result_type>(first), static_cast<result_type>(other)...} };
+    return array_md<result_type, sizeof...(Args)>{
+     {static_cast<result_type>( static_cast<Args &&>(args) )...} };
 }
 
 /** \brief  Non-member array element access
