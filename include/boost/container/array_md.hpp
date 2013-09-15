@@ -561,6 +561,20 @@ struct array_md<T>
     template < typename Function >
     void  apply( Function &&f ) const
     { std::forward<Function>(f)(data_block); }
+    /** \brief  Calls function on element, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via looping) without `const_cast` convolutions with #apply.
+
+        \param f  The function, function-pointer, function-object, or lambda
+                  that will execute the code.  It has to take a single argument
+                  compatible with #value_type (or `const` reference of).
+
+        \post  Unspecified, since *f* may alter itself during the call.
+     */
+    template < typename Function >
+    void  capply( Function &&f ) const
+    { std::forward<Function>(f)(data_block); }
 
     /** \brief  Conversion, cross-type same-shape
 
@@ -1123,6 +1137,21 @@ struct array_md<T, M, N...>
         detail::array_apply( std::integral_constant<std::size_t,
          dimensionality>{}, std::forward<Function>(f), data_block );
     }
+    /** \brief  Calls function on all elements, with indices, immutable access
+
+    Provides a way for a mutable-mode object to get immutable-mode element
+    access (via looping) without `const_cast` convolutions with #apply.
+
+        \param f  The function, function-pointer, function-object, or lambda
+                  that will execute the code.  It has to take #dimensionality +
+                  1 arguments.  The first argument must be compatible with
+                  #value_type (or `const` reference of); subsequent arguments
+                  have to be compatible with `std::size_t`.
+
+        \post  Unspecified, since *f* may alter itself during the calls.
+     */
+    template < typename Function >
+    void  capply( Function &&f ) const  { apply(std::forward<Function>( f )); }
 
     //! Conversion, cross-type same-shape
     template < typename U >

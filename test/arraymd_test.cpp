@@ -730,6 +730,7 @@ BOOST_AUTO_TEST_CASE( test_apply )
 {
     using boost::container::array_md;
     using std::size_t;
+    using std::strlen;
     using std::strcmp;
 
     // Sample function objects
@@ -751,7 +752,16 @@ BOOST_AUTO_TEST_CASE( test_apply )
     t1() = 9;
     t1.apply( flagger );
     BOOST_CHECK( not flag );
-    t2.apply( [&length](char const ( &x )[ 6 ]){length = std::strlen( x );} );
+    t2.apply( [&length](char const ( &x )[ 6 ]){length = strlen( x );} );
+    BOOST_CHECK_EQUAL( length, 4u );
+
+#if 0
+    t1.capply( negator );  // mutating function on const reference
+#endif
+    t1() = -10;
+    t1.capply( flagger );
+    BOOST_CHECK( flag );
+    t2.capply( [&length](char const *s){length = strlen( s );} );
     BOOST_CHECK_EQUAL( length, 4u );
 
     // Compound array
@@ -765,6 +775,13 @@ BOOST_AUTO_TEST_CASE( test_apply )
     BOOST_CHECK_EQUAL( t3(1), -4 );
     BOOST_CHECK_EQUAL( t3(2), -9 );
     BOOST_CHECK_EQUAL( negator.last_argument_count, 1u );
+
+    length = 0u;
+    t3.capply( [&length](int x, unsigned){length += x < 0 && !( x % 2 );} );
+    BOOST_CHECK_EQUAL( length, 1u );
+#if 0
+    t3.capply( negator );  // mutating function on const reference
+#endif
 
     t4.apply( [](int &x, size_t i0, size_t i1){x *= ( (i0 + i1) % 2u ) ? -1 :
      +1;} );
@@ -784,6 +801,10 @@ BOOST_AUTO_TEST_CASE( test_apply )
     BOOST_CHECK_EQUAL( t4(1, 2), +13 );
     BOOST_CHECK_EQUAL( negator.last_argument_count, 2u );
 
+    length = 0u;
+    t4.capply( [&length](int x, unsigned, unsigned){length += x<0 && x%2;} );
+    BOOST_CHECK_EQUAL( length, 2u );
+
     t5.apply( [&s](int x, size_t i0, size_t i1){
         if ( (i0 + i1) % 2u )
             s.real( s.real() + static_cast<double>(x) );
@@ -792,6 +813,10 @@ BOOST_AUTO_TEST_CASE( test_apply )
      } );
     BOOST_CHECK_CLOSE( s.real(), +23.0, 0.1 );
     BOOST_CHECK_CLOSE( s.imag(), -18.0, 0.1 );
+
+    length = 0u;
+    t5.capply( [&length](int x, unsigned, unsigned){length += x<0 && !(x%2);} );
+    BOOST_CHECK_EQUAL( length, 1u );
 
     // Fun with array-based elements
     array_md<char[6], 3> const  t6{ {"duck", "duck", "goose"} };
@@ -808,6 +833,11 @@ BOOST_AUTO_TEST_CASE( test_apply )
     BOOST_CHECK_EQUAL( strcmp(t7( 0, 1 ), "wORLD"), 0 );
     BOOST_CHECK_EQUAL( strcmp(t7( 1, 0 ), "vIDEO"), 0 );
     BOOST_CHECK_EQUAL( strcmp(t7( 1, 1 ), "Watch"), 0 );
+
+    length = 0u;
+    t7.capply( [&length](char const ( &x )[ 6 ], size_t, size_t){for ( char xx :
+     x ) length += !!std::islower( xx );} );  // my "islower" returns 2 on TRUE!
+    BOOST_CHECK_EQUAL( length, 10u );
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_iteration
