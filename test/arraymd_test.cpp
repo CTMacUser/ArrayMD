@@ -15,6 +15,7 @@
 
 #include "boost/container/array_md.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <complex>
 #include <cstddef>
@@ -836,7 +837,7 @@ BOOST_AUTO_TEST_CASE( test_apply )
 
     length = 0u;
     t7.capply( [&length](char const ( &x )[ 6 ], size_t, size_t){for ( char xx :
-     x ) length += !!std::islower( xx );} );  // my "islower" returns 2 on TRUE!
+     x ) length += !!std::islower( xx );} );
     BOOST_CHECK_EQUAL( length, 10u );
 }
 
@@ -1242,20 +1243,51 @@ BOOST_AUTO_TEST_CASE( test_creation )
     using boost::container::make_array;
     using boost::container::array_md;
     using std::is_same;
+    using boost::container::make_auto_array;
+    using boost::container::reshape_array;
 
-    // All same type
-    auto  t1 = make_array( 0, -1, +2 );
-    auto  t2 = make_array( 1UL, 4UL, 0UL, 57UL );
+    // Non-auto
+#if 0
+    auto  s0 = make_array<int>( 4, 5 );  // too many initializers
+#endif
+    auto  s1 = make_array<int>( 4 );
+    auto  s2 = make_array<long>();
+    auto  s3 = make_array<float, 3u>( -1.0, 2u, 3.5L );
+    auto  s4 = make_array<double, 2, 5>( -5L, 4.3f, 3ULL, -2.0, 100, 1.1L );
+
+    BOOST_CHECK( (is_same<decltype( s1 ), array_md<int>>::value) );
+    BOOST_CHECK( (is_same<decltype( s2 ), array_md<long>>::value) );
+    BOOST_CHECK( (is_same<decltype( s3 ), array_md<float, 3u>>::value) );
+    BOOST_CHECK( (is_same<decltype( s4 ), array_md<double, 2u, 5u>>::value) );
+    BOOST_CHECK_EQUAL( s1(), 4 );
+    BOOST_CHECK_EQUAL( s2(), 0L );
+    BOOST_CHECK_CLOSE( s3[0], -1.0f, 0.1 );
+    BOOST_CHECK_CLOSE( s3[1], +2.0f, 0.1 );
+    BOOST_CHECK_CLOSE( s3[2], +3.5f, 0.1 );
+    BOOST_CHECK_CLOSE( s4[0][0],  -5.0, 0.1 );
+    BOOST_CHECK_CLOSE( s4[0][1],  +4.3, 0.1 );
+    BOOST_CHECK_CLOSE( s4[0][2],  +3.0, 0.1 );
+    BOOST_CHECK_CLOSE( s4[0][3],  -2.0, 0.1 );
+    BOOST_CHECK_CLOSE( s4[0][4], 100.0, 0.1 );
+    BOOST_CHECK_CLOSE( s4[1][0],  +1.1, 0.1 );
+    BOOST_CHECK_CLOSE( s4[1][1],   0.0, 0.1 );
+    BOOST_CHECK_CLOSE( s4[1][2],   0.0, 0.1 );
+    BOOST_CHECK_CLOSE( s4[1][3],   0.0, 0.1 );
+    BOOST_CHECK_CLOSE( s4[1][4],   0.0, 0.1 );
+
+    // Auto-typed, all same type
+    auto  t1 = make_auto_array( 0, -1, +2 );
+    auto  t2 = make_auto_array( 1UL, 4UL, 0UL, 57UL );
 
     BOOST_CHECK( (is_same<decltype( t1 ), array_md<int, 3u>>::value) );
     BOOST_CHECK( (is_same<decltype( t2 ), array_md<unsigned long,4u>>::value) );
 
-    // Mixed types
-    auto  t3 = make_array( -6, +3u );
-    auto  t4 = make_array( -7, +4u, -99LL, +100UL );
-    auto  t5 = make_array( 1.0f, -3.5 );
-    auto  t6 = make_array( 2.1, -709.0f, +1024.2048L );
-    auto  t7 = make_array( -80.0L, 79ULL );
+    // Auto-typed, mixed types
+    auto  t3 = make_auto_array( -6, +3u );
+    auto  t4 = make_auto_array( -7, +4u, -99LL, +100UL );
+    auto  t5 = make_auto_array( 1.0f, -3.5 );
+    auto  t6 = make_auto_array( 2.1, -709.0f, +1024.2048L );
+    auto  t7 = make_auto_array( -80.0L, 79ULL );
 
     BOOST_CHECK( (is_same<decltype( t3 ), array_md<unsigned, 2u>>::value) );
     BOOST_CHECK( (is_same<decltype( t4 ), array_md<long long, 4u>>::value) );
@@ -1273,6 +1305,83 @@ BOOST_AUTO_TEST_CASE( test_creation )
     BOOST_CHECK( (is_same<decltype( t7 ), array_md<long double, 2u>>::value) );
     BOOST_CHECK_CLOSE( t7[0], -80.0L, 0.1 );
     BOOST_CHECK_CLOSE( t7[1], +79.0L, 0.1 );
+
+    // Reshape, different element types, same shape
+    auto  u1 = reshape_array<double>( make_array<unsigned>(7u) );
+    auto  u2 = reshape_array<double, 3>( make_array<int, 3>(-3, 0, +2) );
+    auto  u3 = reshape_array<long, 2, 2>( make_array<int,2,2>(1, -4, 9, -16) );
+
+    BOOST_CHECK( (is_same<decltype( u1 ), array_md<double>>::value) );
+    BOOST_CHECK_CLOSE( u1(), +7.0, 0.1 );
+    BOOST_CHECK( (is_same<decltype( u2 ), array_md<double, 3>>::value) );
+    BOOST_CHECK_CLOSE( u2[0], -3.0, 0.1 );
+    BOOST_CHECK_CLOSE( u2[1],  0.0, 0.1 );
+    BOOST_CHECK_CLOSE( u2[2], +2.0, 0.1 );
+    BOOST_CHECK( (is_same<decltype( u3 ), array_md<long, 2, 2>>::value) );
+    BOOST_CHECK_EQUAL( u3[0][0], 1L );
+    BOOST_CHECK_EQUAL( u3[0][1], -4L );
+    BOOST_CHECK_EQUAL( u3[1][0], 9L );
+    BOOST_CHECK_EQUAL( u3[1][1], -16L );
+
+    // Reshape, same element type, different shapes, same size
+    auto  u5 = reshape_array<double, 1>( u1 );
+    auto  u6 = reshape_array<double, 1, 1>( u1 );
+    auto  u7 = reshape_array<long, 4>( u3 );
+
+    BOOST_CHECK( (is_same<decltype( u5 ), array_md<double, 1>>::value) );
+    BOOST_CHECK_CLOSE( u5[0], u1(), 0.1 );
+    BOOST_CHECK( (is_same<decltype( u6 ), array_md<double, 1, 1>>::value) );
+    BOOST_CHECK_CLOSE( u6[0][0], u1(), 0.1 );
+    BOOST_CHECK( (is_same<decltype( u7 ), array_md<long, 4>>::value) );
+    BOOST_CHECK_EQUAL( u7[0], u3[0][0] );
+    BOOST_CHECK_EQUAL( u7[1], u3[0][1] );
+    BOOST_CHECK_EQUAL( u7[2], u3[1][0] );
+    BOOST_CHECK_EQUAL( u7[3], u3[1][1] );
+
+    // Reshape, same element type, different shapes, different size
+    auto   u8 = reshape_array<double, 2, 3, 5>( u1 );
+    auto   u9 = reshape_array<long, 3>( u3 );
+    auto  u10 = reshape_array<long, 2, 2, 2>( u3 );
+
+    BOOST_CHECK( (is_same<decltype( u8 ), array_md<double, 2, 3, 5>>::value) );
+    BOOST_CHECK_CLOSE( u8[0][0][0], u1(), 0.1 );
+    BOOST_CHECK( std::all_of(u8.begin() + 1, u8.end(), []( double x ){ return x
+     == 0.0; }) );
+    BOOST_CHECK( (is_same<decltype( u9 ), array_md<long, 3>>::value) );
+    BOOST_CHECK_EQUAL( u9[0], u3[0][0] );
+    BOOST_CHECK_EQUAL( u9[1], u3[0][1] );
+    BOOST_CHECK_EQUAL( u9[2], u3[1][0] );
+    BOOST_CHECK( (is_same<decltype( u10 ), array_md<long, 2, 2, 2>>::value) );
+    BOOST_CHECK_EQUAL( u10[0][0][0], u3[0][0] );
+    BOOST_CHECK_EQUAL( u10[0][0][1], u3[0][1] );
+    BOOST_CHECK_EQUAL( u10[0][1][0], u3[1][0] );
+    BOOST_CHECK_EQUAL( u10[0][1][1], u3[1][1] );
+    BOOST_CHECK_EQUAL( u10[1][0][0], 0L );
+    BOOST_CHECK_EQUAL( u10[1][0][1], 0L );
+    BOOST_CHECK_EQUAL( u10[1][1][0], 0L );
+    BOOST_CHECK_EQUAL( u10[1][1][1], 0L );
+
+    // Reshape, different element type, different shapes, different size
+    auto u11 = reshape_array<int>( u2 );
+    auto u12 = reshape_array<long, 2>( u2 );
+    auto u13 = reshape_array<long, 4>( u2 );
+    auto u14 = reshape_array<float, 2, 2>( u2 );
+
+    BOOST_CHECK( (is_same<decltype( u11 ), array_md<int>>::value) );
+    BOOST_CHECK_EQUAL( u11(), -3 );
+    BOOST_CHECK( (is_same<decltype( u12 ), array_md<long, 2>>::value) );
+    BOOST_CHECK_EQUAL( u12[0], -3L );
+    BOOST_CHECK_EQUAL( u12[1],  0L );
+    BOOST_CHECK( (is_same<decltype( u13 ), array_md<long, 4>>::value) );
+    BOOST_CHECK_EQUAL( u13[0], -3L );
+    BOOST_CHECK_EQUAL( u13[1],  0L );
+    BOOST_CHECK_EQUAL( u13[2], +2L );
+    BOOST_CHECK_EQUAL( u13[3],  0L );
+    BOOST_CHECK( (is_same<decltype( u14 ), array_md<float, 2, 2>>::value) );
+    BOOST_CHECK_CLOSE( u14[0][0], -3.0f, 0.1 );
+    BOOST_CHECK_CLOSE( u14[0][1],  0.0f, 0.1 );
+    BOOST_CHECK_CLOSE( u14[1][0], +2.0f, 0.1 );
+    BOOST_CHECK_CLOSE( u14[1][1],  0.0f, 0.1 );
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_operations

@@ -1246,6 +1246,31 @@ namespace detail
          + I) )...} };
     }
 
+    //! Create array with list of initializers, non-braced
+    template < typename T, std::size_t ...N, typename ...Args >
+    constexpr
+    boost::container::array_md<T, N...>
+    make_array_impl( std::false_type, Args &&...args )
+    {
+        // This should be called only when sizeof...(N) == 0.  In that case,
+        // having sizeof...(args) > 1 should lead to an error.
+        return boost::container::array_md< T, N... >{ static_cast<T>(
+         static_cast<Args &&>( args ))... };
+    }
+    //! Create array with list of initializers, braced
+    template < typename T, std::size_t ...N, typename ...Args >
+    constexpr
+    boost::container::array_md<T, N...>
+    make_array_impl( std::true_type, Args &&...args )
+    {
+        // This should be called only when sizeof...(N) > 0.  In those cases,
+        // having sizeof...(N) > 1 when sizeof...(args) > 0 will use the sloppy
+        // array initialization syntax, which will flag warnings in compilers
+        // that care about proper form.
+        return boost::container::array_md< T, N... >{ {static_cast<T>(
+         static_cast<Args &&>( args ))...} };
+    }
+
 }  // namespace detail
 //! \endcond
 
@@ -1456,7 +1481,38 @@ void  swap( array_md<T, N...> &a, array_md<T, N...> &b )
  noexcept( noexcept(a.swap( b )) )
 { a.swap(b); }
 
-/** \brief  Create an array from a list of values.
+/** \brief  Create a typed and shaped array using a list of values.
+
+Makes an new `array_md` object with the given element type and extent list, and
+uses the given arguments as the initializers.
+
+    \pre  `sizeof...(args) <= Product(N...)`.
+    \pre  `static_cast<T>( std::declval<A>() )` is well-formed, where `A` is any
+          of the function argument types.
+
+    \tparam T  The type of the elements.
+    \tparam N  The size of each dimension of the array.  May be empty.
+
+    \param args  The objects to initialize each array element.  May be empty.
+
+    \throws Whatever  converting any argument to `T` may throw.
+    \throws What      copy/move-initialization of `T` may throw.
+
+    \returns  an array object *x* such that
+              - For `0 <= k < Min( x.size(), sizeof...(args) )`, `*( x.begin() +
+                k )` is equivalent to `static_cast<T>( args[k] )`.
+              - For `sizeof...(args) <= k < x.size()`, `*( x.begin() + k )` is
+                equivalent to `T{}`.
+ */
+template < typename T, std::size_t ...N, typename ...Args >
+inline constexpr
+array_md<T, N...>  make_array( Args &&...args )
+{
+    return detail::make_array_impl<T, N...>( std::integral_constant<bool,
+     sizeof...(N)>{}, static_cast<Args &&>(args)... );
+}
+
+/** \brief  Create a fitted array from a list of values.
 
 Makes an new `array_md` object, and uses the given arguments as the
 initializers.  The element type and number of elements are automatically
@@ -1476,12 +1532,44 @@ computed from the arguments.  (A zero-sized array cannot be created.)
 template < typename ...Args >
 inline constexpr
 array_md<typename std::common_type<Args...>::type, sizeof...(Args)>
-make_array( Args &&...args )
+make_auto_array( Args &&...args )
 {
-    typedef typename std::common_type<Args...>::type  result_type;
+    return make_array< typename std::common_type<Args...>::type, sizeof...(Args)
+     >( static_cast<Args &&>(args)... );
+}
 
-    return array_md<result_type, sizeof...(Args)>{
-     {static_cast<result_type>( static_cast<Args &&>(args) )...} };
+/** \brief  Copy an array's data to another array of arbitrary type and shape.
+
+Makes an new `array_md` object with the given element type and extent list, and
+copy another array's elements into it.
+
+    \pre  `static_cast<T>( std::declval<typename decltype(source)::value_type>()
+          )` is well-formed.
+    \pre  `T` is Default-Constructible.
+
+    \tparam T  The type of the elements.
+    \tparam N  The size of each dimension of the array.  May be empty.
+
+    \param source  The objects to copy into each array element.
+
+    \throws Whatever  converting any argument to `T` may throw.
+    \throws What      copy-assignment of `T` may throw.
+
+    \returns  an array object *x* such that
+              - For `0 <= k < Min( x.size(), source.size() )`, `*( x.begin() +
+                k )` is equivalent to `static_cast<T>( *(source.begin() + k) )`.
+              - For `source.size() <= k < x.size()`, `*( x.begin() + k )` is
+                equivalent to `T{}`.
+ */
+template < typename T, std::size_t ...N, typename U, std::size_t ...M >
+//constexpr  // in C++14?
+array_md<T, N...>  reshape_array( array_md<U, M...> const &source )
+{
+    array_md<T, N...>  result{};
+
+    std::transform( source.begin(), source.begin() + std::min(source.size(),
+     result.size()), result.begin(), [](U const&u){return static_cast<T>(u);} );
+    return result;
 }
 
 /** \brief  Non-member array element access
