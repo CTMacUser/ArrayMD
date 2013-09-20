@@ -68,7 +68,7 @@ Ideally, a multi-dimensional array is not a linear structure and would avoid
 providing linear-based access.  However, support for range-`for` and many
 standard and standard-inspired algorithms require linear access, so it's
 provided.  In fact, this class provides the same external interface as
-`std::array` (except for any zero-sized extents), especially when a single
+`std::array`, especially when a single
 extent is given.  It meets the requirements for Container (except empty on
 default/value-initialization), Reversible Container, the optional container
 operations, none of the Sequence container requirements (since they are either
@@ -77,7 +77,8 @@ Sequence operations that don't involve size-changing (but `operator []` and `at`
 act differently when the number of extents isn't exactly one), the Allocator
 pointer type-aliases, and the (out-of-class) `tuple` interface.
 
-    \pre  If any extents are given, they all must be greater than zero.
+    \pre  If at least one extent is given, the first one must be at least zero.
+          Any extents after the first must be greater than zero.
 
     \tparam ElementType  The type of the elements.
     \tparam Extents      The size of each dimension of the multi-level array.
@@ -189,7 +190,7 @@ namespace detail
     template < std::size_t Extents = 1u, typename T >
     constexpr
     auto  address_first_element( T &&t ) noexcept ->
-    typename remove_some_extents<typename std::remove_reference<T>::type,
+     typename remove_some_extents<typename std::remove_reference<T>::type,
      Extents>::type *
     {
         return address_first_element_impl( static_cast<T&&>(t),
@@ -278,7 +279,7 @@ struct array_md<T>
         \returns  `size() == 0`.
      */
     constexpr
-    bool  empty() const noexcept  { return false; }
+    bool  empty() const noexcept  { return !size(); }
 
     // Element access
     /** \brief  Returns underlying access.
@@ -600,7 +601,11 @@ struct array_md<T>
 The recursive case directly stores a C-level array of the previous case's
 data type.
 
-    \pre  All extents must be positive.
+When the first extent is zero, the first extent of the corresponding C-level
+array is of unknown bound.  This is an incomplete type, so the member data is
+instead implemented as an unspecified POD type.
+
+    \pre  Any extents after the first must be positive.
 
     \tparam T  The type of the elements.
     \tparam M  The first (outer-most) extent.
@@ -616,7 +621,8 @@ struct array_md<T, M, N...>
     //! only when #dimensionality is 1.
     typedef typename array_md<T, N...>::data_type  direct_element_type;
     //! The type of #data_block; not equal to #value_type in recursive cases.
-    typedef direct_element_type                              data_type[ M ];
+    typedef typename std::conditional<M, direct_element_type[M],
+     direct_element_type[]>::type                            data_type;
     //! The type for size-based meta-data and access indices.
     typedef std::size_t                                      size_type;
 
@@ -650,8 +656,8 @@ struct array_md<T, M, N...>
     //! The array extents, in an array.
     static constexpr  size_type  static_sizes[] = { M, N... };
     //! The total number of elements (of #value_type).
-    static constexpr  size_type  static_size = sizeof( data_type ) / sizeof(
-     value_type );
+    static constexpr  size_type  static_size = std::extent<data_type>::value *
+     ( sizeof(direct_element_type) / sizeof(value_type) );
 
     // Capacity
     /** \brief  Returns element count.
@@ -681,7 +687,7 @@ struct array_md<T, M, N...>
         \returns  `size() == 0`.
      */
     constexpr
-    bool  empty() const noexcept  { return false; }
+    bool  empty() const noexcept  { return !size(); }
 
     // Element (or sub-array) access
     /** \brief  Returns underlying access.
@@ -693,11 +699,11 @@ struct array_md<T, M, N...>
         \returns  The address of the first element (of #value_type).
      */
     auto  data()       noexcept -> pointer
-    { return detail::address_first_element<dimensionality>(data_block); }
+    { return secret_data(std::integral_constant<bool, static_size>{}); }
     //! \overload
     constexpr
     auto  data() const noexcept -> const_pointer
-    { return detail::address_first_element<dimensionality>(data_block); }
+    { return secret_data(std::integral_constant<bool, static_size>{}); }
 
     /** \brief  Access to element data, with depth of exactly one.
 
@@ -1159,7 +1165,22 @@ struct array_md<T, M, N...>
 
     // Member data
     //! The element(s), public to support aggregate initialization.
-    data_type  data_block;
+    typename std::conditional<static_size, data_type, typename
+     std::aligned_storage<sizeof(value_type), alignof(value_type)>::type>::type
+     data_block;
+
+private:
+    // Secret implmentation
+          pointer  secret_data( std::true_type )
+    { return detail::address_first_element<dimensionality>(data_block); }
+    constexpr
+    const_pointer  secret_data( std::true_type ) const
+    { return detail::address_first_element<dimensionality>(data_block); }
+          pointer  secret_data( std::false_type )
+    { return reinterpret_cast<pointer>(&data_block); }
+    constexpr
+    const_pointer  secret_data( std::false_type ) const
+    { return reinterpret_cast<const_pointer>(&data_block); }
 };
 
 

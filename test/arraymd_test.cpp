@@ -512,6 +512,47 @@ BOOST_AUTO_TEST_CASE( test_compound_dynamic )
     BOOST_CHECK_THROW( t4.at({ 9, 8, 7 }), length_error );
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_zero_size, T, test_types )
+{
+    using boost::container::array_md;
+    using std::is_same;
+
+    array_md<T, 0>        e1;
+    auto const &          e2 = e1;
+    array_md<T, 0, 2>     e3;
+    auto const &          e4 = e3;
+    array_md<T, 0, 5, 7>  e5;
+    auto const &          e6 = e5;
+#if 0
+    array_md<T, 3, 0>     e7;
+    auto const &          e8 = e7;  // Only first extent can be 0.
+#endif
+
+    BOOST_CHECK( (is_same<typename decltype(e1)::data_type, T[]>::value) );
+    BOOST_CHECK_EQUAL( e1.size(), 0u );
+    BOOST_CHECK( e1.empty() );
+    BOOST_CHECK_EQUAL( e1.begin(), e1.end() );
+    BOOST_CHECK_EQUAL( e2.size(), 0u );
+    BOOST_CHECK( e2.empty() );
+    BOOST_CHECK_EQUAL( e2.begin(), e2.end() );
+
+    BOOST_CHECK( (is_same<typename decltype(e3)::data_type, T[][2]>::value) );
+    BOOST_CHECK_EQUAL( e3.size(), 0u );
+    BOOST_CHECK( e3.empty() );
+    BOOST_CHECK_EQUAL( e3.begin(), e3.end() );
+    BOOST_CHECK_EQUAL( e4.size(), 0u );
+    BOOST_CHECK( e4.empty() );
+    BOOST_CHECK_EQUAL( e4.begin(), e4.end() );
+
+    BOOST_CHECK( (is_same<typename decltype(e5)::data_type,T[][5][7]>::value) );
+    BOOST_CHECK_EQUAL( e5.size(), 0u );
+    BOOST_CHECK( e5.empty() );
+    BOOST_CHECK_EQUAL( e5.begin(), e5.end() );
+    BOOST_CHECK_EQUAL( e6.size(), 0u );
+    BOOST_CHECK( e6.empty() );
+    BOOST_CHECK_EQUAL( e6.begin(), e6.end() );
+}
+
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_basics
 
 
