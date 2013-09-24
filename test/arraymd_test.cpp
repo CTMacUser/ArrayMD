@@ -8,9 +8,7 @@
 //  See <http://www.boost.org/libs/container/> for the library's home page.
 
 #define BOOST_TEST_MAIN  "Multi-Dimensional Array Unit Tests"
-#include <boost/test/included/unit_test.hpp>
-#include <boost/test/test_case_template.hpp>
-#include <boost/test/floating_point_comparison.hpp>
+#include <boost/test/unit_test.hpp>
 #include <boost/mpl/list.hpp>
 
 #include "boost/container/array_md.hpp"
