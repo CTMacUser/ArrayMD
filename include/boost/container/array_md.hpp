@@ -152,7 +152,7 @@ namespace detail
 
     //! Strip a specified number of array extents (instead of either one or all)
     template < typename T, std::size_t Amount > struct remove_some_extents;
-    //! Base-case specialization of `remove_some_extents`.
+    //! Base-case specialization, no change to input type.
     template < typename T > struct remove_some_extents<T, 0u>
     { typedef T type; };
     //! The general (recursive) case
@@ -162,6 +162,18 @@ namespace detail
         typedef typename remove_some_extents<typename
          std::remove_extent<T>::type, Amount - 1u>::type type;
     };
+
+    //! Add the specified array extents
+    template < typename T, std::size_t ...N > struct append_extents;
+    //! Base-case specialization, no change to input type.
+    template < typename T > struct append_extents<T>  { typedef T type; };
+    //! Recursive-case specialization, zero-sized extent becomes unknown bound.
+    template < typename T, std::size_t ...M > struct append_extents<T, 0u, M...>
+    { typedef typename append_extents<T, M...>::type type[]; };
+    //! The general (recursive) case, add new extent at top level.
+    template < typename T, std::size_t N, std::size_t ...M >
+    struct append_extents<T, N, M...>
+    { typedef typename append_extents<T, M...>::type type[N]; };
 
     //! `address_first_element` when input is a non-array type
     template < typename T >
@@ -619,10 +631,9 @@ struct array_md<T, M, N...>
     typedef T                                               value_type;
     //! The type for the direct elements of #data_block.  Equal to #value_type
     //! only when #dimensionality is 1.
-    typedef typename array_md<T, N...>::data_type  direct_element_type;
+    typedef typename detail::append_extents<T, N...>::type  direct_element_type;
     //! The type of #data_block; not equal to #value_type in recursive cases.
-    typedef typename std::conditional<M, direct_element_type[M],
-     direct_element_type[]>::type                            data_type;
+    typedef typename detail::append_extents<T,M,N...>::type  data_type;
     //! The type for size-based meta-data and access indices.
     typedef std::size_t                                      size_type;
 
