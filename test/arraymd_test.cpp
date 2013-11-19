@@ -551,6 +551,48 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_zero_size, T, test_types )
     BOOST_CHECK_EQUAL( e6.begin(), e6.end() );
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_nested_array, T, test_types )
+{
+    using std::is_same;
+    using boost::container::array_md;
+    using boost::container::nested_array_md;
+
+    // Zero- and one-dimensional cases don't differ.
+    BOOST_REQUIRE( (is_same<array_md<T>, nested_array_md<T>>::value) );
+
+    BOOST_REQUIRE( (is_same<array_md<T, 6>, nested_array_md<T, 6>>::value) );
+    BOOST_REQUIRE( (is_same<array_md<T, 1>, nested_array_md<T, 1>>::value) );
+    BOOST_REQUIRE( (is_same<array_md<T, 0>, nested_array_md<T, 0>>::value) );
+
+    // Now they do.
+    BOOST_REQUIRE( not (is_same<array_md<T, 2, 3>, nested_array_md<T, 2,
+     3>>::value) );
+    BOOST_REQUIRE( (is_same<array_md<array_md<T, 3>, 2>, nested_array_md<T, 2,
+     3>>::value) );
+
+    BOOST_REQUIRE( not (is_same<array_md<T, 0, 5, 8>, nested_array_md<T, 0, 5,
+     8>>::value) );
+    BOOST_REQUIRE( (is_same<array_md<array_md<array_md<T, 8>, 5>, 0>,
+     nested_array_md<T, 0, 5, 8>>::value) );
+
+    // Something new: non-first zero!
+#if 0
+    BOOST_REQUIRE( not (is_same<array_md<T, 7, 0>, nested_array_md<T, 7,
+     0>>::value) );
+#endif
+    BOOST_REQUIRE( (is_same<array_md<array_md<T, 0>, 7>, nested_array_md<T, 7,
+     0>>::value) );
+
+    // Something new: multiple zeros!
+#if 0
+    BOOST_REQUIRE( not (is_same<array_md<T, 0, 4, 0, 0>, nested_array_md<T, 0,
+     4, 0, 0>>::value) );
+#endif
+    BOOST_REQUIRE( (is_same<array_md<array_md<array_md<array_md<T, 0>, 0>, 4>,
+     0>, nested_array_md<T, 0, 4, 0, 0>>::value) );
+    BOOST_REQUIRE( sizeof(nested_array_md<T, 0, 4, 0, 0>) >= sizeof(T) );
+}
+
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_basics
 
 

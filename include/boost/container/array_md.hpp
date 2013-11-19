@@ -1237,6 +1237,66 @@ typename array_md<T, M, N...>::size_type  array_md<T, M, N...>::static_size;
 //! \cond
 namespace detail
 {
+    //! Helper class for building externally-nested array_md instantiations.
+    template < typename T, std::size_t ...N >
+    struct nested_array_helper;
+    //! Zero-dimension arrays can't be nested.
+    template < typename T >
+    struct nested_array_helper<T>
+    {
+        typedef boost::container::array_md<T>  type;
+    };
+    //! One-dimensional arrays are trivially nested.
+    template < typename T, std::size_t N >
+    struct nested_array_helper<T, N>
+    {
+        typedef boost::container::array_md<T, N>  type;
+    };
+    //! In general, nest the class types instead of the array types.
+    template < typename T, std::size_t N0, std::size_t N1, std::size_t ...N >
+    struct nested_array_helper<T, N0, N1, N...>
+    {
+        typedef boost::container::array_md<typename nested_array_helper<T, N1,
+         N...>::type, N0>  type;
+    };
+
+}  // namespace detail
+//! \endcond
+
+
+//  Externally multi-dimensional array alias template definition  ------------//
+
+/** \brief  Method to specify that a multi-dimensional constant-size array will
+            nest at the class level.
+
+The `array_md` class template applies multiple dimensions via nesting array
+types by default.  Another philosophy is to nest the class types; an `array_md`
+instantiation as the element type of another.  Such instantiations are linear
+arrays outside the special alias.
+
+Multi-level access is done by a chain of `operator []()` calls, or other
+single-element options.  As a favor to usability, a one-dimensional use of this
+template stores the element type directly, instead of within zero-dimension
+array objects.
+
+    \tparam ElementType  The type of the elements.
+    \tparam Extents      The size of each dimension of the multi-level array.
+                         Given in the same order as nested C-level arrays, e.g.
+                         `array_md<int, 6, 5>` maps to a type whose objects,
+                         like `x`, have a maximum indexing of `x[5][4]`.  If no
+                         extents are given, then a single element is stored.
+
+ */
+template < typename ElementType, std::size_t ...Extents >
+using nested_array_md = typename detail::nested_array_helper<ElementType,
+ Extents...>::type;
+
+
+//  More implementation details, part deux  ----------------------------------//
+
+//! \cond
+namespace detail
+{
     //! Base construct for simulating C++14's integer sequences
     //! (The next few types and function taken from StackOverflow.)
     template < std::size_t ... > struct seq { typedef seq type; };
