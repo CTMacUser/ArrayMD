@@ -1283,7 +1283,7 @@ BOOST_AUTO_TEST_CASE( test_creation )
     using boost::container::array_md;
     using std::is_same;
     using boost::container::make_auto_array;
-    using boost::container::reshape_array;
+    using boost::container::remake_array;
 
     // Non-auto
 #if 0
@@ -1346,9 +1346,9 @@ BOOST_AUTO_TEST_CASE( test_creation )
     BOOST_CHECK_CLOSE( t7[1], +79.0L, 0.1 );
 
     // Reshape, different element types, same shape
-    auto  u1 = reshape_array<double>( make_array<unsigned>(7u) );
-    auto  u2 = reshape_array<double, 3>( make_array<int, 3>(-3, 0, +2) );
-    auto  u3 = reshape_array<long, 2, 2>( make_array<int,2,2>(1, -4, 9, -16) );
+    auto  u1 = remake_array<double>( make_array<unsigned>(7u) );
+    auto  u2 = remake_array<double, 3>( make_array<int, 3>(-3, 0, +2) );
+    auto  u3 = remake_array<long, 2, 2>( make_array<int,2,2>(1, -4, 9, -16) );
 
     BOOST_CHECK( (is_same<decltype( u1 ), array_md<double>>::value) );
     BOOST_CHECK_CLOSE( u1(), +7.0, 0.1 );
@@ -1363,9 +1363,9 @@ BOOST_AUTO_TEST_CASE( test_creation )
     BOOST_CHECK_EQUAL( u3[1][1], -16L );
 
     // Reshape, same element type, different shapes, same size
-    auto  u5 = reshape_array<double, 1>( u1 );
-    auto  u6 = reshape_array<double, 1, 1>( u1 );
-    auto  u7 = reshape_array<long, 4>( u3 );
+    auto  u5 = remake_array<double, 1>( u1 );
+    auto  u6 = remake_array<double, 1, 1>( u1 );
+    auto  u7 = remake_array<long, 4>( u3 );
 
     BOOST_CHECK( (is_same<decltype( u5 ), array_md<double, 1>>::value) );
     BOOST_CHECK_CLOSE( u5[0], u1(), 0.1 );
@@ -1378,9 +1378,9 @@ BOOST_AUTO_TEST_CASE( test_creation )
     BOOST_CHECK_EQUAL( u7[3], u3[1][1] );
 
     // Reshape, same element type, different shapes, different size
-    auto   u8 = reshape_array<double, 2, 3, 5>( u1 );
-    auto   u9 = reshape_array<long, 3>( u3 );
-    auto  u10 = reshape_array<long, 2, 2, 2>( u3 );
+    auto   u8 = remake_array<double, 2, 3, 5>( u1 );
+    auto   u9 = remake_array<long, 3>( u3 );
+    auto  u10 = remake_array<long, 2, 2, 2>( u3 );
 
     BOOST_CHECK( (is_same<decltype( u8 ), array_md<double, 2, 3, 5>>::value) );
     BOOST_CHECK_CLOSE( u8[0][0][0], u1(), 0.1 );
@@ -1401,10 +1401,10 @@ BOOST_AUTO_TEST_CASE( test_creation )
     BOOST_CHECK_EQUAL( u10[1][1][1], 0L );
 
     // Reshape, different element type, different shapes, different size
-    auto u11 = reshape_array<int>( u2 );
-    auto u12 = reshape_array<long, 2>( u2 );
-    auto u13 = reshape_array<long, 4>( u2 );
-    auto u14 = reshape_array<float, 2, 2>( u2 );
+    auto u11 = remake_array<int>( u2 );
+    auto u12 = remake_array<long, 2>( u2 );
+    auto u13 = remake_array<long, 4>( u2 );
+    auto u14 = remake_array<float, 2, 2>( u2 );
 
     BOOST_CHECK( (is_same<decltype( u11 ), array_md<int>>::value) );
     BOOST_CHECK_EQUAL( u11(), -3 );

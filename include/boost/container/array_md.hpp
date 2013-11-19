@@ -1595,7 +1595,7 @@ copy another array's elements into it.
  */
 template < typename T, std::size_t ...N, typename U, std::size_t ...M >
 //constexpr  // in C++14?
-array_md<T, N...>  reshape_array( array_md<U, M...> const &source )
+array_md<T, N...>  remake_array( array_md<U, M...> const &source )
 {
     array_md<T, N...>  result{};
 
