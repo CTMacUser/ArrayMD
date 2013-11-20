@@ -1363,6 +1363,25 @@ namespace detail
          static_cast<Args &&>( args ))...} };
     }
 
+    //! Peel extents from a built-in array type to an array container class.
+    template < typename ArrayType, std::size_t PeeledExtents, std::size_t
+     ...ExtraExtents >
+    struct array_peeler;
+    //! Base case: no further peeling; make an `array_md` from what we got.
+    template < typename T, std::size_t ...E >
+    struct array_peeler<T, 0, E...>
+    { typedef boost::container::array_md<T, E...> type; };
+    //! Recursive case: shift outermost extent from array to list.
+    template < typename T, std::size_t P, std::size_t ...E >
+    struct array_peeler
+    {
+        typedef typename array_peeler<
+            typename std::remove_extent<T>::type,
+            P - 1u,
+            E..., std::extent<T>::value
+        >::type  type;
+    };
+
 }  // namespace detail
 //! \endcond
 
@@ -1661,6 +1680,43 @@ array_md<T, N...>  remake_array( array_md<U, M...> const &source )
 
     std::transform( source.begin(), source.begin() + std::min(source.size(),
      result.size()), result.begin(), [](U const&u){return static_cast<T>(u);} );
+    return result;
+}
+
+/** \brief  Copy a built-in array to an `array_md`.
+
+Makes a new `array_md` object from the elements of the given array, each of the
+given number of extents moved from the built-in array's extents to the
+`array_md` trailing extent list.  The count of outer extents has to be specified
+by the user; for example, should an built-in array of built-in strings, which
+are built-in arrays of `char`, be converted at the string or character level?
+
+    \pre  `Peelings <= std::rank<T>::value`.
+    \pre  `T` is Default-Constructible and Copy-Assignable.
+
+    \tparam Peelings  The number of extents to transfer from the built-in array
+                      type to the `array_md` instantiation.  (Note that the
+                      class's internal data type will always equal the built-in
+                      array type.)  Transfers are taken from the outer-most
+                      extents (i.e. the largest element block type).  Defaults
+                      to 1 for ease of the common case.
+    \tparam T         The type of the built-in (multidimensional) array.  Should
+                      be deduced by the compiler.
+
+    \param source  The elements to copy.
+
+    \returns  an array object *x* such that `x[n0]..[nLast] ==
+              source[n0]..[nLast]` for each valid index-tuple for elements of
+              the inner non-array type.
+ */
+template < std::size_t Peelings = 1, typename T >
+typename detail::array_peeler<T, Peelings>::type  to_array( T const &source )
+{
+    static_assert( std::rank<T>::value >= Peelings, "Too few dimensions" );
+
+    decltype( to_array<Peelings>(source) )  result;
+
+    detail::deep_assign( result.data_block, source );
     return result;
 }
 

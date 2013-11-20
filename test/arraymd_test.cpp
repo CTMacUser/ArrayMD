@@ -1465,4 +1465,57 @@ BOOST_AUTO_TEST_CASE( test_creation )
     BOOST_CHECK_CLOSE( u14[1][1],  0.0f, 0.1 );
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_to_array, T, test_types )
+{
+    using std::is_same;
+    using boost::container::array_md;
+    using boost::container::to_array;
+
+    // Non-array objects
+#if 0
+    auto  t1 = to_array( T{1} );  // default is 1, need 0
+#else
+    auto  t1 = to_array<0>( T{1} );
+#endif
+    BOOST_REQUIRE( (is_same<decltype(t1), array_md<T>>::value) );
+    BOOST_CHECK_EQUAL( t1(), static_cast<T>(1) );
+
+    // An array can be treated as a single object.
+    T     s1[] = { 2, 0, 3, 9 };
+    auto  t2 = to_array<0>( s1 );
+
+    BOOST_REQUIRE( (is_same<decltype(t2), array_md<T[4]>>::value) );
+    BOOST_CHECK_EQUAL( t2()[0], static_cast<T>(2) );
+#if 0
+    BOOST_CHECK_EQUAL( t2[2], static_cast<T>(3) );
+#else
+    BOOST_CHECK_EQUAL( t2()[2], static_cast<T>(3) );
+#endif
+
+    // Without a peel number, 1 is the assumed value.
+    auto  t3 = to_array( s1 );
+
+    BOOST_REQUIRE( (is_same<decltype(t3), array_md<T, 4>>::value) );
+    BOOST_CHECK_EQUAL( t3[1], static_cast<T>(0) );
+    BOOST_CHECK_EQUAL( t3()[3], static_cast<T>(9) );
+
+    // Even multidimensional arrays default to a one-dimensional conversion
+    T     s2[ 3 ][ 2 ] = { {1, 4}, {5, 8}, {7, 6} };
+    auto  t4 = to_array( s2 );
+
+    BOOST_REQUIRE( (is_same<decltype(t4), array_md<T[2], 3>>::value) );
+    BOOST_CHECK_EQUAL( t4()[0][0], static_cast<T>(1) );
+    BOOST_CHECK_EQUAL( t4(0)[1], static_cast<T>(4) );
+    BOOST_CHECK_EQUAL( t4[1][0], static_cast<T>(5) );
+
+    // Need to specify the count when more than one extent is moved.
+    auto  t5 = to_array<2>( s2 );
+
+    BOOST_REQUIRE( (is_same<decltype(t5), array_md<T, 3, 2>>::value) );
+    BOOST_CHECK_EQUAL( t5()[1][1], static_cast<T>(8) );
+    BOOST_CHECK_EQUAL( t5[2][1], static_cast<T>(6) );
+    BOOST_CHECK_EQUAL( t5(2, 0), static_cast<T>(7) );
+}
+
+
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_operations
