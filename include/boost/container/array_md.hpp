@@ -1338,50 +1338,6 @@ namespace detail
          + I) )...} };
     }
 
-    //! Create array with list of initializers, non-braced
-    template < typename T, std::size_t ...N, typename ...Args >
-    constexpr
-    boost::container::array_md<T, N...>
-    make_array_impl( std::false_type, Args &&...args )
-    {
-        // This should be called only when sizeof...(N) == 0.  In that case,
-        // having sizeof...(args) > 1 should lead to an error.
-        return boost::container::array_md< T, N... >{ static_cast<T>(
-         static_cast<Args &&>( args ))... };
-    }
-    //! Create array with list of initializers, braced
-    template < typename T, std::size_t ...N, typename ...Args >
-    constexpr
-    boost::container::array_md<T, N...>
-    make_array_impl( std::true_type, Args &&...args )
-    {
-        // This should be called only when sizeof...(N) > 0.  In those cases,
-        // having sizeof...(N) > 1 when sizeof...(args) > 0 will use the sloppy
-        // array initialization syntax, which will flag warnings in compilers
-        // that care about proper form.
-        return boost::container::array_md< T, N... >{ {static_cast<T>(
-         static_cast<Args &&>( args ))...} };
-    }
-
-    //! Peel extents from a built-in array type to an array container class.
-    template < typename ArrayType, std::size_t PeeledExtents, std::size_t
-     ...ExtraExtents >
-    struct array_peeler;
-    //! Base case: no further peeling; make an `array_md` from what we got.
-    template < typename T, std::size_t ...E >
-    struct array_peeler<T, 0, E...>
-    { typedef boost::container::array_md<T, E...> type; };
-    //! Recursive case: shift outermost extent from array to list.
-    template < typename T, std::size_t P, std::size_t ...E >
-    struct array_peeler
-    {
-        typedef typename array_peeler<
-            typename std::remove_extent<T>::type,
-            P - 1u,
-            E..., std::extent<T>::value
-        >::type  type;
-    };
-
 }  // namespace detail
 //! \endcond
 
@@ -1565,32 +1521,60 @@ bool  operator <=( array_md<T, N...> const &l, array_md<U, N...> const &r )
 { return not operator >( l, r ); }
 
 
-//  Multi-dimensional array class template, other operations  ----------------//
+//  More implementation details, part trois  ---------------------------------//
 
-/** \brief  Swap routine for `array_md`.
+//! \cond
+namespace detail
+{
+    //! Create array with list of initializers, non-braced
+    template < typename T, std::size_t ...N, typename ...Args >
+    constexpr
+    boost::container::array_md<T, N...>
+    make_array_impl( std::false_type, Args &&...args )
+    {
+        // This should be called only when sizeof...(N) == 0.  In that case,
+        // having sizeof...(args) > 1 should lead to an error.
+        return boost::container::array_md< T, N... >{ static_cast<T>(
+         static_cast<Args &&>( args ))... };
+    }
+    //! Create array with list of initializers, braced
+    template < typename T, std::size_t ...N, typename ...Args >
+    constexpr
+    boost::container::array_md<T, N...>
+    make_array_impl( std::true_type, Args &&...args )
+    {
+        // This should be called only when sizeof...(N) > 0.  In those cases,
+        // having sizeof...(N) > 1 when sizeof...(args) > 0 will use the sloppy
+        // array initialization syntax, which will flag warnings in compilers
+        // that care about proper form.
+        return boost::container::array_md< T, N... >{ {static_cast<T>(
+         static_cast<Args &&>( args ))...} };
+    }
 
-Exchanges the state of two `array_md` objects.  The objects have to have the
-same element type and number of dimensions, and the corresponding dimensions
-have to be equal.
+    //! Peel extents from a built-in array type to an array container class.
+    template < typename ArrayType, std::size_t PeeledExtents, std::size_t
+     ...ExtraExtents >
+    struct array_peeler;
+    //! Base case: no further peeling; make an `array_md` from what we got.
+    template < typename T, std::size_t ...E >
+    struct array_peeler<T, 0, E...>
+    { typedef boost::container::array_md<T, E...> type; };
+    //! Recursive case: shift outermost extent from array to list.
+    template < typename T, std::size_t P, std::size_t ...E >
+    struct array_peeler
+    {
+        typedef typename array_peeler<
+            typename std::remove_extent<T>::type,
+            P - 1u,
+            E..., std::extent<T>::value
+        >::type  type;
+    };
 
-    \pre  There is a swapping routine, called `swap`, either in namespace `std`
-          for built-ins, or found via ADL for other types.
+}  // namespace detail
+//! \endcond
 
-    \param a  The first object to have its state exchanged.
-    \param b  The second object to have its state exchanged.
 
-    \see  #array_md<T,N...>::swap(array_md<T,N...>&)
-
-    \throws Whatever  the element-level swap does.
-
-    \post  `a` is equivalent to the old state of `b`, while `b` is equivalent to
-           the old state of `a`.
- */
-template < typename T, std::size_t ...N >
-inline
-void  swap( array_md<T, N...> &a, array_md<T, N...> &b )
- noexcept( noexcept(a.swap( b )) )
-{ a.swap(b); }
+//  Multi-dimensional array class template, creation functions  --------------//
 
 /** \brief  Create a typed and shaped array using a list of values.
 
@@ -1719,6 +1703,34 @@ typename detail::array_peeler<T, Peelings>::type  to_array( T const &source )
     detail::deep_assign( result.data_block, source );
     return result;
 }
+
+
+//  Multi-dimensional array class template, other operations  ----------------//
+
+/** \brief  Swap routine for `array_md`.
+
+Exchanges the state of two `array_md` objects.  The objects have to have the
+same element type and number of dimensions, and the corresponding dimensions
+have to be equal.
+
+    \pre  There is a swapping routine, called `swap`, either in namespace `std`
+          for built-ins, or found via ADL for other types.
+
+    \param a  The first object to have its state exchanged.
+    \param b  The second object to have its state exchanged.
+
+    \see  #array_md<T,N...>::swap(array_md<T,N...>&)
+
+    \throws Whatever  the element-level swap does.
+
+    \post  `a` is equivalent to the old state of `b`, while `b` is equivalent to
+           the old state of `a`.
+ */
+template < typename T, std::size_t ...N >
+inline
+void  swap( array_md<T, N...> &a, array_md<T, N...> &b )
+ noexcept( noexcept(a.swap( b )) )
+{ a.swap(b); }
 
 /** \brief  Non-member array element access
 
