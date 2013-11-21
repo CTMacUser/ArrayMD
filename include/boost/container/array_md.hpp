@@ -1570,6 +1570,54 @@ namespace detail
         >::type  type;
     };
 
+    //! Create a nested `array_md` from a built-in array.
+    template < typename T >
+    void  make_nested_helper( boost::container::array_md<T> &out, T const &s )
+    { deep_assign(out.data_block, s); }
+    //! \overload
+    template < typename T, std::size_t N >
+    void  make_nested_helper( boost::container::array_md<T, N> &out, T const
+     (&s)[N] )
+    { deep_assign(out.data_block, s); }
+    //! \overload
+    template < typename T, typename U, std::size_t N, std::size_t ...M >
+    void  make_nested_helper( boost::container::array_md<T, N, M...> &out,
+     U const (&s)[N] )
+    { for (std::size_t i = 0u ; i < N ; ++i) make_nested_helper(out[i], s[i]); }
+    //! Fill a built-in array from a nested `array_md`.
+    template < typename T >
+    void  unmake_nested_helper( boost::container::array_md<T> const &s, T &out )
+    { deep_assign(out, s.data_block); }
+    //! \overload
+    template < typename T, std::size_t N >
+    void  unmake_nested_helper( boost::container::array_md<T, N> const &s, T
+     (&out)[N] )
+    { deep_assign(out, s.data_block); }
+    //! \overload
+    template < typename T, typename U, std::size_t N, std::size_t ...M >
+    void  unmake_nested_helper( boost::container::array_md<T, N, M...> const &s,
+     U (&out)[N] )
+    { for(std::size_t i = 0u ; i < N ; ++i) unmake_nested_helper(s[i],out[i]); }
+
+    //! Helper class for unbuilding externally-nested `array_md` instantiations.
+    template < class ArrayType, std::size_t ...ExtraExtents >
+    struct nested_array_unhelper;
+    //! Base case: no inner `array_md` type to justify stripping an outer.
+    template < typename T, std::size_t ...D, std::size_t ...L >
+    struct nested_array_unhelper< boost::container::array_md<T, L...>, D... >
+    { typedef boost::container::array_md<T, D..., L...> type; };
+    //! Recursive case: strip outer extents to list.
+    template <typename U, std::size_t ...E, std::size_t ...N, std::size_t ...M>
+    struct nested_array_unhelper<
+     boost::container::array_md<boost::container::array_md<U, M...>, N...>,
+     E... >
+    {
+        typedef typename nested_array_unhelper<
+            boost::container::array_md<U, M...>,
+            E..., N...
+        >::type  type;
+    };
+
 }  // namespace detail
 //! \endcond
 
@@ -1701,6 +1749,45 @@ typename detail::array_peeler<T, Peelings>::type  to_array( T const &source )
     decltype( to_array<Peelings>(source) )  result;
 
     detail::deep_assign( result.data_block, source );
+    return result;
+}
+
+/** \brief  Convert from array- to class-level data nesting for `array_md`.
+
+    \param source  The elements to copy.
+
+    \returns  an array object *x* such that `x[n0]..[nLast] ==
+              source[n0]..[nLast]` for each valid index-tuple for elements of
+              the inner non-array type.
+ */
+template < typename T, std::size_t ...N >
+nested_array_md<T, N...>  make_nested( array_md<T, N...> const &source )
+{
+    decltype( make_nested(source) )  result;
+
+    detail::make_nested_helper( result, source.data_block );
+    return result;
+}
+
+/** \brief  Convert from class- to array-level data nesting for `array_md`.
+
+    \pre  `decltype(source)` has to be a type that could match a
+          `nested_array_md` instantiation.  (In other words, all of the
+          `array_md` instantiations have to be linear.)
+
+    \param source  The elements to copy.
+
+    \returns  an array object *x* such that `x[n0]..[nLast] ==
+              source[n0]..[nLast]` for each valid index-tuple for elements of
+              the inner non-array type.
+ */
+template < typename T, std::size_t ...N >
+auto  unmake_nested( array_md<T, N...> const &source ) -> typename
+ detail::nested_array_unhelper< array_md<T, N...> >::type
+{
+    decltype( unmake_nested(source) )  result;
+
+    detail::unmake_nested_helper( source, result.data_block );
     return result;
 }
 

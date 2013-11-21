@@ -1517,5 +1517,77 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( test_to_array, T, test_types )
     BOOST_CHECK_EQUAL( t5(2, 0), static_cast<T>(7) );
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE( test_nesting, T, test_types)
+{
+    using std::is_same;
+    using boost::container::make_array;
+    using boost::container::make_nested;
+    using boost::container::array_md;
+    using boost::container::nested_array_md;
+
+    // Zero- and one-dimensional arrays don't change
+    auto  t1 = make_array<T>( 1 );
+    auto  t2 = make_nested( t1 );
+
+    BOOST_REQUIRE( (is_same<decltype(t1), array_md<T>>::value) );
+    BOOST_REQUIRE( (is_same<decltype(t2), nested_array_md<T>>::value) );
+    BOOST_REQUIRE( (is_same<decltype(t1), decltype(t2)>::value) );
+    BOOST_CHECK_EQUAL( t1(), t2() );
+
+    auto  t3 = make_array<T, 7>( 2, 3, 4, 5, 6, 7, 8 );
+    auto  t4 = make_nested( t3 );
+
+    BOOST_REQUIRE( (is_same<decltype(t3), array_md<T, 7>>::value) );
+    BOOST_REQUIRE( (is_same<decltype(t4), nested_array_md<T, 7>>::value) );
+    BOOST_REQUIRE( (is_same<decltype(t3), decltype(t4)>::value) );
+    BOOST_CHECK_EQUAL_COLLECTIONS( t3.begin(), t3.end(), t4.begin(), t4.end() );
+
+    // Two-dimensional (and above) arrays differ from the nested ones.
+    auto  t5 = make_array<T, 3, 2>( 10, 11, 12, 13, 14, 15 );
+    auto  t6 = make_nested( t5 );
+
+    BOOST_REQUIRE( (is_same<decltype(t5), array_md<T, 3, 2>>::value) );
+    BOOST_REQUIRE( (is_same<decltype(t6), nested_array_md<T, 3, 2>>::value) );
+    BOOST_REQUIRE( not (is_same<decltype(t5), decltype(t6)>::value) );
+    BOOST_CHECK_EQUAL( t5[0][0], t6[0][0] );
+    BOOST_CHECK_EQUAL( t5()[0][1], t6()[0][1] );
+    BOOST_CHECK_EQUAL( t5(1)[0], t6(1)[0] );
+#if 0
+    BOOST_CHECK_EQUAL( t5(1, 1), t6(1, 1) );  // t6 is one-dimensional array_md
+#else
+    BOOST_CHECK_EQUAL( t5(1, 1), t6(1)[1] );
+#endif
+    BOOST_CHECK_EQUAL( t5[2][0], t6[2][0] );
+    BOOST_CHECK_EQUAL( t5()[2][1], t6()[2][1] );
+
+    // Zero- and one-dimensional arrays don't change going back, either.
+    auto  b1 = unmake_nested( t2 );
+
+    BOOST_REQUIRE( (is_same<decltype(b1), array_md<T>>::value) );
+    BOOST_REQUIRE( (is_same<decltype(b1), decltype(t1)>::value) );
+    BOOST_REQUIRE( (is_same<decltype(b1), decltype(t2)>::value) );
+    BOOST_CHECK_EQUAL( b1(), t2() );
+
+    auto  b3 = unmake_nested( t4 );
+
+    BOOST_REQUIRE( (is_same<decltype(b3), array_md<T, 7>>::value) );
+    BOOST_REQUIRE( (is_same<decltype(b3), decltype(t3)>::value) );
+    BOOST_REQUIRE( (is_same<decltype(b3), decltype(t4)>::value) );
+    BOOST_CHECK_EQUAL_COLLECTIONS( b3.begin(), b3.end(), t4.begin(), t4.end() );
+
+    // Two-dimensional (and above) arrays differ from the flattened ones.
+    auto  b5 = unmake_nested( t6 );
+
+    BOOST_REQUIRE( (is_same<decltype(b5), array_md<T, 3, 2>>::value) );
+    BOOST_REQUIRE( (is_same<decltype(b5), decltype(t5)>::value) );
+    BOOST_REQUIRE( not (is_same<decltype(b5), decltype(t6)>::value) );
+    BOOST_CHECK_EQUAL( b5[0][0], t6[0][0] );
+    BOOST_CHECK_EQUAL( b5()[0][1], t6()[0][1] );
+    BOOST_CHECK_EQUAL( b5(1)[0], t6(1)[0] );
+    BOOST_CHECK_EQUAL( b5(1, 1), t6(1)[1] );
+    BOOST_CHECK_EQUAL( b5[2][0], t6[2][0] );
+    BOOST_CHECK_EQUAL( b5()[2][1], t6()[2][1] );
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()  // test_array_md_operations
